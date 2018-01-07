@@ -5,9 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "watch": "webpack --watch",
-    "build": "webpack",
-    "start": "webpack-dev-server --open"
+    "watch": "gulp --watch",
+    "build": "gulp"
   },
   "repository": {
     "type": "git",
@@ -20,12 +19,10 @@
   },
   "homepage": "https://github.com/comp500/syncplay-js#readme",
   "devDependencies": {
-    "@babel/core": "^7.0.0-beta.36",
-    "@babel/preset-env": "^7.0.0-beta.36",
-    "babel-loader": "^8.0.0-beta.0",
-    "html-webpack-plugin": "^2.30.1",
-    "webpack": "^3.10.0",
-    "webpack-dev-server": "^2.10.0"
-  },
-  "dependencies": {}
+    "babel-preset-env": "^1.6.1",
+    "gulp": "^3.9.1",
+    "gulp-babel": "^7.0.0",
+    "gulp-concat": "^2.6.1",
+    "gulp-sourcemaps": "^2.6.3"
+  }
 }
