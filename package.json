@@ -1,0 +1,29 @@
+{
+  "name": "syncplay-js",
+  "version": "1.0.0",
+  "description": "A library to connect to Syncplay servers through a WebSockets bridge.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "watch": "webpack --watch",
+    "build": "webpack"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/comp500/syncplay-js.git"
+  },
+  "author": "comp500",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/comp500/syncplay-js/issues"
+  },
+  "homepage": "https://github.com/comp500/syncplay-js#readme",
+  "devDependencies": {
+    "@babel/core": "^7.0.0-beta.36",
+    "@babel/preset-env": "^7.0.0-beta.36",
+    "babel-loader": "^8.0.0-beta.0",
+    "webpack": "^3.10.0",
+    "webpack-dev-server": "^2.10.0"
+  },
+  "dependencies": {}
+}
