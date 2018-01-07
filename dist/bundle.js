@@ -153,12 +153,12 @@ function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _d
 var _class =
 /*#__PURE__*/
 function () {
-  function _class(options, callback) {
+  function _class(callback) {
     _classCallCheck(this, _class);
 
     console.log("Constructed!");
     this.eventHandler = callback;
-    this.options = options;
+    this.errorcallbacks = [];
   }
 
   _createClass(_class, [{
@@ -173,7 +173,7 @@ function () {
           while (1) {
             switch (_context.prev = _context.next) {
               case 0:
-                this.connection = new _WebSocketConnection.default(this.options);
+                this.connection = new _WebSocketConnection.default();
                 _context.next = 3;
                 return this.connection.connect(path);
 
@@ -183,10 +183,21 @@ function () {
                 });
                 this.deserializer = new _Deserializer.default(this.eventHandler);
                 this.connection.onMessage(function (msg) {
-                  _this.deserializer.write(msg);
+                  try {
+                    _this.deserializer.write(msg);
+                  } catch (e) {
+                    _this.errorcallbacks.forEach(function (callback) {
+                      return callback(e);
+                    });
+                  }
+                });
+                this.connection.onError(function (e) {
+                  _this.errorcallbacks.forEach(function (callback) {
+                    return callback(e);
+                  });
                 });
 
-              case 6:
+              case 7:
               case "end":
                 return _context.stop();
             }
@@ -198,6 +209,33 @@ function () {
         return _connect.apply(this, arguments);
       };
     }()
+  }, {
+    key: "close",
+    value: function close() {
+      try {
+        this.connection.close();
+      } catch (e) {} // ignore as already closed
+      // free memory?
+
+
+      delete this.connection;
+      delete this.serializer;
+      delete this.deserializer;
+    }
+  }, {
+    key: "getState",
+    value: function getState() {
+      if (this.connection) {
+        this.connection.getState();
+      } else {
+        return -1;
+      }
+    }
+  }, {
+    key: "onError",
+    value: function onError(callback) {
+      this.errorcallbacks.push(callback);
+    }
   }]);
 
   return _class;
@@ -260,8 +298,6 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = void 0;
 
-function _asyncToGenerator(fn) { return function () { var self = this, args = arguments; return new Promise(function (resolve, reject) { var gen = fn.apply(self, args); function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { Promise.resolve(value).then(_next, _throw); } } function _next(value) { step("next", value); } function _throw(err) { step("throw", err); } _next(); }); }; }
-
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
@@ -271,34 +307,62 @@ function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _d
 var _class =
 /*#__PURE__*/
 function () {
-  function _class(options) {
+  function _class() {
     _classCallCheck(this, _class);
 
     console.log("Constructed WSConn!");
-    this.options = options;
   }
 
   _createClass(_class, [{
     key: "connect",
-    value: function () {
-      var _connect = _asyncToGenerator(
-      /*#__PURE__*/
-      regeneratorRuntime.mark(function _callee(path) {
-        return regeneratorRuntime.wrap(function _callee$(_context) {
-          while (1) {
-            switch (_context.prev = _context.next) {
-              case 0:
-              case "end":
-                return _context.stop();
-            }
-          }
-        }, _callee, this);
-      }));
+    value: function connect(path) {
+      var _this = this;
 
-      return function connect(_x) {
-        return _connect.apply(this, arguments);
-      };
-    }()
+      return new Promise(function (resolve, reject) {
+        _this.socket = new WebSocket(path);
+
+        var errorListener = function errorListener(e) {
+          reject(e);
+        };
+
+        _this.socket.addEventListener("open", function () {
+          resolve();
+
+          _this.socket.removeEventListener("open", errorListener);
+        });
+
+        _this.socket.addEventListener("error", errorListener);
+      });
+    }
+  }, {
+    key: "write",
+    value: function write(msg) {
+      this.socket.send(msg);
+    }
+  }, {
+    key: "onMessage",
+    value: function onMessage(callback) {
+      this.socket.addEventListener("message", function (event) {
+        callback(event.data);
+      });
+    }
+  }, {
+    key: "onError",
+    value: function onError(callback) {
+      this.socket.addEventListener("error", function (e) {
+        callback(e);
+      });
+    }
+  }, {
+    key: "close",
+    value: function close() {
+      this.socket.close();
+    }
+  }, {
+    key: "getState",
+    value: function getState() {
+      return this.socket.readyState;
+    }
   }]);
 
   return _class;
