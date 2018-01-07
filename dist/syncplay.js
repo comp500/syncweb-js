@@ -11,6 +11,7 @@ var Client = function Client() {
 };
 
 SyncPlay.Client = Client;
+window.SyncPlay = SyncPlay;
 }());
 
 //# sourceMappingURL=syncplay.js.map
