@@ -7,13 +7,16 @@ export default class {
 		return new Promise((resolve, reject) => {
 			this.socket = new WebSocket(path);
 
+			let errorListener = (e) => {
+				reject(e);
+			};
+
 			this.socket.addEventListener("open", () => {
 				resolve();
+				this.socket.removeEventListener("open", errorListener);
 			});
 
-			this.socket.addEventListener("error", (e) => {
-				reject(e);
-			});
+			this.socket.addEventListener("error", errorListener);
 		});
 	}
 
