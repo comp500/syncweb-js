@@ -28,5 +28,8 @@ module.exports = {
 			SYNCPLAYEXPORT: JSON.stringify(true)
 		}),
 		new HtmlWebpackPlugin()
-	]
+	],
+	"devServer": {
+		contentBase: './dist'
+	}
 };
