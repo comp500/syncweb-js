@@ -1,16 +1,17 @@
 export default class {
 	constructor () {
-		this.errorcallbacks = [];
+		this.messagecallbacks = [];
 	}
 
 	write(message) {
 		let messageParsed = JSON.parse(message);
-		if (messageParsed.length > 0) {
-			this.errorcallbacks.forEach((callback) => callback("seek", 55));
-		}
+		console.log(messageParsed);
+		/*if (messageParsed.length > 0) {
+			this.messagecallbacks.forEach((callback) => callback("seek", 55));
+		}*/
 	}
 
 	onMessage(callback) {
-		this.errorcallbacks.push(callback);
+		this.messagecallbacks.push(callback);
 	}
 }
