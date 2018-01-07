@@ -2,7 +2,7 @@
   "name": "syncplay-js",
   "version": "1.0.0",
   "description": "A library to connect to Syncplay servers through a WebSockets bridge.",
-  "main": "index.js",
+  "main": "dist/syncplay.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "watch": "gulp --watch",
@@ -25,6 +25,7 @@
     "gulp-babel": "^7.0.0",
     "gulp-concat": "^2.6.1",
     "gulp-iife": "^0.3.0",
-    "gulp-sourcemaps": "^2.6.3"
+    "gulp-sourcemaps": "^2.6.3",
+    "gulp-uglify": "^3.0.0"
   }
 }

@@ -4,13 +4,27 @@ const sourcemaps = require("gulp-sourcemaps");
 const babel = require("gulp-babel");
 const concat = require("gulp-concat");
 const iife = require("gulp-iife");
+const uglify = require("gulp-uglify");
 
-gulp.task("default", function () {
-	return gulp.src(["src/index.js", "src/Client.js", "src/export.js"])
+const fileList = ["src/index.js", "src/Client.js", "src/export.js"];
+
+gulp.task("default", ["minified"], function () {
+	return gulp.src(fileList)
 		.pipe(sourcemaps.init())
 		.pipe(concat("syncplay.js"))
 		.pipe(babel())
 		.pipe(iife({ useStrict: false, prependSemicolon: false }))
+		.pipe(sourcemaps.write("."))
+		.pipe(gulp.dest("dist"));
+});
+
+gulp.task("minified", function () {
+	return gulp.src(fileList)
+		.pipe(sourcemaps.init())
+		.pipe(concat("syncplay.min.js"))
+		.pipe(babel())
+		.pipe(iife({ useStrict: false, prependSemicolon: false }))
+		.pipe(uglify())
 		.pipe(sourcemaps.write("."))
 		.pipe(gulp.dest("dist"));
 });
