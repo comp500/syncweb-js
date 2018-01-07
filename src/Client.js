@@ -1,4 +1,5 @@
 import Serializer from "./Serializer";
+import Deserializer from "./Deserializer";
 import WebSocketConnection from "./WebSocketConnection";
 
 export default class {
@@ -13,6 +14,10 @@ export default class {
 		await this.connection.connect(path);
 		this.serializer = new Serializer((stringToWrite) => {
 			this.connection.write(stringToWrite);
+		});
+		this.deserializer = new Deserializer(this.eventHandler);
+		this.connection.onMessage((msg) => {
+			this.deserializer.write(msg);
 		});
 	}
 }

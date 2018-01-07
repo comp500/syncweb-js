@@ -136,7 +136,9 @@ exports.default = void 0;
 
 var _Serializer = _interopRequireDefault(__webpack_require__(0));
 
-var _WebSocketConnection = _interopRequireDefault(__webpack_require__(3));
+var _Deserializer = _interopRequireDefault(__webpack_require__(3));
+
+var _WebSocketConnection = _interopRequireDefault(__webpack_require__(4));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -179,8 +181,12 @@ function () {
                 this.serializer = new _Serializer.default(function (stringToWrite) {
                   _this.connection.write(stringToWrite);
                 });
+                this.deserializer = new _Deserializer.default(this.eventHandler);
+                this.connection.onMessage(function (msg) {
+                  _this.deserializer.write(msg);
+                });
 
-              case 4:
+              case 6:
               case "end":
                 return _context.stop();
             }
@@ -201,6 +207,49 @@ exports.default = _class;
 
 /***/ }),
 /* 3 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+var _class =
+/*#__PURE__*/
+function () {
+  function _class(reader) {
+    _classCallCheck(this, _class);
+
+    this.reader = reader;
+  }
+
+  _createClass(_class, [{
+    key: "write",
+    value: function write(message) {
+      var messageParsed = JSON.parse(message);
+
+      if (messageParsed.length > 0) {
+        this.reader("seek", 55);
+      }
+    }
+  }]);
+
+  return _class;
+}();
+
+exports.default = _class;
+
+/***/ }),
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
