@@ -60,7 +60,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 1);
+/******/ 	return __webpack_require__(__webpack_require__.s = 2);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -111,16 +111,41 @@ exports.default = _class;
 "use strict";
 
 
-var _Client = _interopRequireDefault(__webpack_require__(2));
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
 
-var _Serializer = _interopRequireDefault(__webpack_require__(0));
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
 
-var SyncPlay = {};
-SyncPlay.Client = _Client.default;
-SyncPlay.Serializer = _Serializer.default;
-window.SyncPlay = SyncPlay;
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+var _class =
+/*#__PURE__*/
+function () {
+  function _class(reader) {
+    _classCallCheck(this, _class);
+
+    this.reader = reader;
+  }
+
+  _createClass(_class, [{
+    key: "write",
+    value: function write(message) {
+      var messageParsed = JSON.parse(message);
+
+      if (messageParsed.length > 0) {
+        this.reader("seek", 55);
+      }
+    }
+  }]);
+
+  return _class;
+}();
+
+exports.default = _class;
 
 /***/ }),
 /* 2 */
@@ -134,11 +159,45 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = void 0;
 
+var _Client = _interopRequireDefault(__webpack_require__(3));
+
 var _Serializer = _interopRequireDefault(__webpack_require__(0));
 
-var _Deserializer = _interopRequireDefault(__webpack_require__(3));
+var _Deserializer = _interopRequireDefault(__webpack_require__(1));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+/* global SYNCPLAYEXPORT */
+var SyncPlay = {};
+SyncPlay.Client = _Client.default;
+SyncPlay.Serializer = _Serializer.default;
+SyncPlay.Deserializer = _Deserializer.default;
+var _default = SyncPlay;
+exports.default = _default;
+
+if (true) {
+  window.SyncPlay = SyncPlay;
+}
+
+/***/ }),
+/* 3 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _Serializer = _interopRequireDefault(__webpack_require__(0));
+
+var _Deserializer = _interopRequireDefault(__webpack_require__(1));
 
 var _WebSocketConnection = _interopRequireDefault(__webpack_require__(4));
+
+var _PingResponder = _interopRequireDefault(__webpack_require__(5));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -196,8 +255,9 @@ function () {
                     return callback(e);
                   });
                 });
+                new _PingResponder.default(this.serializer, this.deserializer);
 
-              case 7:
+              case 8:
               case "end":
                 return _context.stop();
             }
@@ -235,49 +295,6 @@ function () {
     key: "onError",
     value: function onError(callback) {
       this.errorcallbacks.push(callback);
-    }
-  }]);
-
-  return _class;
-}();
-
-exports.default = _class;
-
-/***/ }),
-/* 3 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
-
-function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
-
-var _class =
-/*#__PURE__*/
-function () {
-  function _class(reader) {
-    _classCallCheck(this, _class);
-
-    this.reader = reader;
-  }
-
-  _createClass(_class, [{
-    key: "write",
-    value: function write(message) {
-      var messageParsed = JSON.parse(message);
-
-      if (messageParsed.length > 0) {
-        this.reader("seek", 55);
-      }
     }
   }]);
 
@@ -367,6 +384,29 @@ function () {
 
   return _class;
 }();
+
+exports.default = _class;
+
+/***/ }),
+/* 5 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var _class = function _class(serializer, deserializer) {
+  _classCallCheck(this, _class);
+
+  this.serializer = serializer;
+  this.deserializer = deserializer;
+};
 
 exports.default = _class;
 
