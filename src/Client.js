@@ -1,6 +1,7 @@
 import Serializer from "./Serializer";
 import Deserializer from "./Deserializer";
 import WebSocketConnection from "./WebSocketConnection";
+import PingResponder from "./PingResponder";
 
 export default class {
 	constructor(callback) {
@@ -23,10 +24,10 @@ export default class {
 				this.errorcallbacks.forEach((callback) => callback(e));
 			}
 		});
-
 		this.connection.onError((e) => {
 			this.errorcallbacks.forEach((callback) => callback(e));
 		});
+		new PingResponder(this.serializer, this.deserializer);
 	}
 
 	close() {
