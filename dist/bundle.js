@@ -125,10 +125,10 @@ function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _d
 var _class =
 /*#__PURE__*/
 function () {
-  function _class(reader) {
+  function _class() {
     _classCallCheck(this, _class);
 
-    this.reader = reader;
+    this.errorcallbacks = [];
   }
 
   _createClass(_class, [{
@@ -137,8 +137,15 @@ function () {
       var messageParsed = JSON.parse(message);
 
       if (messageParsed.length > 0) {
-        this.reader("seek", 55);
+        this.errorcallbacks.forEach(function (callback) {
+          return callback("seek", 55);
+        });
       }
+    }
+  }, {
+    key: "onMessage",
+    value: function onMessage(callback) {
+      this.errorcallbacks.push(callback);
     }
   }]);
 
@@ -240,7 +247,8 @@ function () {
                 this.serializer = new _Serializer.default(function (stringToWrite) {
                   _this.connection.write(stringToWrite);
                 });
-                this.deserializer = new _Deserializer.default(this.eventHandler);
+                this.deserializer = new _Deserializer.default();
+                this.deserializer.onMessage(this.eventHandler);
                 this.connection.onMessage(function (msg) {
                   try {
                     _this.deserializer.write(msg);
@@ -255,9 +263,9 @@ function () {
                     return callback(e);
                   });
                 });
-                new _PingResponder.default(this.serializer, this.deserializer);
+                this.pingresponder = new _PingResponder.default(this.serializer, this.deserializer);
 
-              case 8:
+              case 9:
               case "end":
                 return _context.stop();
             }
@@ -274,13 +282,14 @@ function () {
     value: function close() {
       try {
         this.connection.close();
-      } catch (e) {} // ignore as already closed
-      // free memory?
+        this.pingresponder.close(); // free memory?
 
-
-      delete this.connection;
-      delete this.serializer;
-      delete this.deserializer;
+        delete this.connection;
+        delete this.serializer;
+        delete this.deserializer;
+        delete this.pingresponder;
+      } catch (e) {// ignore as already closed
+      }
     }
   }, {
     key: "getState",
@@ -401,12 +410,35 @@ exports.default = void 0;
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var _class = function _class(serializer, deserializer) {
-  _classCallCheck(this, _class);
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
 
-  this.serializer = serializer;
-  this.deserializer = deserializer;
-};
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+var _class =
+/*#__PURE__*/
+function () {
+  function _class(serializer, deserializer) {
+    _classCallCheck(this, _class);
+
+    this.serializer = serializer;
+    this.deserializer = deserializer;
+    this.deserializer.onMessage(this.handleEvent);
+  }
+
+  _createClass(_class, [{
+    key: "handleEvent",
+    value: function handleEvent(event, data) {
+      // there, eslint. i used it.
+      event;
+      data;
+    }
+  }, {
+    key: "close",
+    value: function close() {}
+  }]);
+
+  return _class;
+}();
 
 exports.default = _class;
 
