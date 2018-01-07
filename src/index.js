@@ -6,4 +6,7 @@ SyncPlay.Client = Client;
 SyncPlay.Serializer = Serializer;
 
 export default SyncPlay;
-window.SyncPlay = SyncPlay;
+
+if (SYNCPLAYEXPORT) {
+	window.SyncPlay = SyncPlay;
+}
