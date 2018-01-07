@@ -1,1 +1,1 @@
-{"version":3,"sources":["index.js"],"names":[],"mappings":"AAAA","file":"syncplay.js","sourcesContent":[""]}
+{"version":3,"sources":["index.js","Client.js"],"names":["SyncPlay","Client"],"mappings":";;;;AAAA;AACA,IAAAA,WAAA,EAAA;;ICDAC,M;;;;AAIAD,SAAAC,MAAA,GAAAA,MAAA","file":"syncplay.js","sourcesContent":["/* eslint-disable no-unused-vars */\r\nlet SyncPlay = {};","class Client {\r\n\r\n}\r\n\r\nSyncPlay.Client = Client;"]}
