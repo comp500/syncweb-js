@@ -16,7 +16,8 @@ export default class {
 		this.serializer = new Serializer((stringToWrite) => {
 			this.connection.write(stringToWrite);
 		});
-		this.deserializer = new Deserializer(this.eventHandler);
+		this.deserializer = new Deserializer();
+		this.deserializer.onMessage(this.eventHandler);
 		this.connection.onMessage((msg) => {
 			try {
 				this.deserializer.write(msg);
@@ -27,20 +28,22 @@ export default class {
 		this.connection.onError((e) => {
 			this.errorcallbacks.forEach((callback) => callback(e));
 		});
-		new PingResponder(this.serializer, this.deserializer);
+		this.pingresponder = new PingResponder(this.serializer, this.deserializer);
 	}
 
 	close() {
 		try {
 			this.connection.close();
+			this.pingresponder.close();
+
+			// free memory?
+			delete this.connection;
+			delete this.serializer;
+			delete this.deserializer;
+			delete this.pingresponder;
 		} catch (e) {
 			// ignore as already closed
 		}
-
-		// free memory?
-		delete this.connection;
-		delete this.serializer;
-		delete this.deserializer;
 	}
 
 	getState() {
