@@ -1,5 +1,4 @@
-/* global EventEmitter */
-/* global ArrayHandlers */
+/* global EventEmitter, ArrayHandlers */
 
 let staticProtocolList = [];
 let staticPlayerProxyList = [];
@@ -86,20 +85,20 @@ class Client extends EventEmitter {
 		this.currentProtocol = fetchedProtocol;
 		this.state = 1;
 
+		fetchedProtocol.any(this.proxyEvents);
+		fetchedProtocol.on("seturl", this.setURL);
+
 		fetchedProtocol.connect(options, () => {
 			if (this.state != 1) {
 				return; // ignore event if not in connecting state
 			}
 			this.state = 2;
-	
-			this.currentProtocol.any(this.proxyEvents);
-			this.currentProtocol.on("seturl", this.setURL);
 		});
 	}
 
 	proxyEvents(event, data) {
 		for (let i = 0; i < this.playerProxyList; i++) {
-			this.playerProxyList.on(event, data);
+			this.playerProxyList[i].on(event, data);
 		}
 		if (this.currentPlayer) {
 			// players must not respond to seturl
@@ -110,7 +109,7 @@ class Client extends EventEmitter {
 	proxyCommand(command, data) {
 		if (this.currentPlayer) {
 			for (let i = 0; i < this.playerProxyList; i++) {
-				this.playerProxyList.command(command, data);
+				this.playerProxyList[i].command(command, data);
 			}
 			this.currentPlayer.command(command, data);
 		} else {
@@ -128,7 +127,7 @@ class Client extends EventEmitter {
 				return;
 			}
 		}
-		
+
 		let foundPlayer = this.playerList.find((player) => {
 			return player.supports(url);
 		});
