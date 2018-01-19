@@ -1,4 +1,4 @@
-class WebSocketProtocol extends SyncPlay.Protocol {
+class WebSocketProtocol extends SyncWeb.Protocol {
 	constructor() {
 		super("WebSocket-builtin");
 	}
@@ -21,5 +21,5 @@ class WebSocketProtocol extends SyncPlay.Protocol {
 	}
 }
 
-// Adds the protocol to SyncPlay statically, so every Client has it
-SyncPlay.Client.addStaticProtocol(new WebSocketProtocol());
+// Adds the protocol to SyncWeb statically, so every Client has it
+SyncWeb.Client.addStaticProtocol(new WebSocketProtocol());

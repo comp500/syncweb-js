@@ -9,6 +9,6 @@
 	},
 	"extends": "eslint:recommended",
 	"globals": {
-		"SyncPlay": true
+		"SyncWeb": true
 	}
 }

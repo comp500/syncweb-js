@@ -7,4 +7,4 @@ class Protocol extends EventEmitter {
 	}
 }
 
-SyncPlay.Protocol = Protocol;
+SyncWeb.Protocol = Protocol;

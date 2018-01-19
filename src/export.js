@@ -1,1 +1,1 @@
-window.SyncPlay = SyncPlay;
+window.SyncWeb = SyncWeb;

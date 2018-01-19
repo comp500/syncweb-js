@@ -161,4 +161,4 @@ class Client extends EventEmitter {
 	
 }
 
-SyncPlay.Client = Client;
+SyncWeb.Client = Client;

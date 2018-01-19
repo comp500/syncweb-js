@@ -4,4 +4,4 @@ class Player {
 	}
 }
 
-SyncPlay.Player = Player;
+SyncWeb.Player = Player;

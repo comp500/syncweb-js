@@ -20,7 +20,7 @@ const fileList = [
 gulp.task("default", ["minified"], function () {
 	return gulp.src(fileList)
 		.pipe(sourcemaps.init())
-		.pipe(concat("syncplay.js"))
+		.pipe(concat("syncweb.js"))
 		.pipe(babel())
 		.pipe(iife({ useStrict: false, prependSemicolon: false }))
 		.pipe(sourcemaps.write("."))
@@ -30,7 +30,7 @@ gulp.task("default", ["minified"], function () {
 gulp.task("minified", function () {
 	return gulp.src(fileList)
 		.pipe(sourcemaps.init())
-		.pipe(concat("syncplay.min.js"))
+		.pipe(concat("syncweb.min.js"))
 		.pipe(babel())
 		.pipe(iife({ useStrict: false, prependSemicolon: false }))
 		.pipe(uglify())

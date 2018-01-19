@@ -26,4 +26,4 @@ let ArrayHandlers = {
 	}
 };
 
-SyncPlay.util.ArrayHandlers = ArrayHandlers;
+SyncWeb.util.ArrayHandlers = ArrayHandlers;

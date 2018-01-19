@@ -26,7 +26,7 @@ class EventEmitter {
 	emit(name, data) {
 		if (!this.activeEvents) return 0;
 		if (!this.eventList[name]) return 0;
-		
+
 		for (let i = 0; i < this.eventList[name].length; i++) {
 			this.eventList[name](data);
 		}
@@ -50,4 +50,4 @@ class EventEmitter {
 	}
 }
 
-SyncPlay.util.EventEmitter = EventEmitter;
+SyncWeb.util.EventEmitter = EventEmitter;
