@@ -17,6 +17,14 @@ class EventEmitter {
 		}
 		return this.eventList[name].length;
 	}
+
+	removeListener(name, callback) {
+		// TODO: find a way to gracefully report problems like this
+		if (!this.eventList[name]) return;
+		
+		let index = this.eventList[name].indexOf(callback);
+		if (index > -1) this.eventList.splice(index, 1);
+	}
 }
 
 SyncPlay.util.EventEmitter = EventEmitter;
