@@ -5,9 +5,11 @@ let ArrayHandlers = {
 				return itemFound.name == content;
 			});
 		} else {
-			return array.find((itemFound) => {
-				return itemFound == content;
-			});
+			if (array.includes(content)) {
+				return content;
+			} else {
+				return undefined;
+			}
 		}
 	},
 
