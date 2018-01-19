@@ -125,8 +125,15 @@ var Protocol = function (_EventEmitter) {
 }(EventEmitter);
 
 SyncPlay.Protocol = Protocol;
-/* global EventEmitter */
-/* global ArrayHandlers */
+
+var Player = function Player(name) {
+	_classCallCheck(this, Player);
+
+	this.name = name;
+};
+
+SyncPlay.Player = Player;
+/* global EventEmitter, ArrayHandlers */
 
 var staticProtocolList = [];
 var staticPlayerProxyList = [];
@@ -208,21 +215,25 @@ var Client = function (_EventEmitter2) {
 			this.currentProtocol = fetchedProtocol;
 			this.state = 1;
 
+			this.proxyEvents("connecting", protocol);
+			fetchedProtocol.any(this.proxyEvents);
+			fetchedProtocol.on("seturl", this.setURL);
+
+			// TODO: implement some sort of log system, for errors, connection progress etc.
+
 			fetchedProtocol.connect(options, function () {
 				if (_this4.state != 1) {
 					return; // ignore event if not in connecting state
 				}
 				_this4.state = 2;
-
-				_this4.currentProtocol.any(_this4.proxyEvents);
-				_this4.currentProtocol.on("seturl", _this4.setURL);
+				_this4.proxyEvents("connected");
 			});
 		}
 	}, {
 		key: "proxyEvents",
 		value: function proxyEvents(event, data) {
 			for (var i = 0; i < this.playerProxyList; i++) {
-				this.playerProxyList.on(event, data);
+				this.playerProxyList[i].on(event, data);
 			}
 			if (this.currentPlayer) {
 				// players must not respond to seturl
@@ -234,9 +245,22 @@ var Client = function (_EventEmitter2) {
 		value: function proxyCommand(command, data) {
 			if (this.currentPlayer) {
 				for (var i = 0; i < this.playerProxyList; i++) {
-					this.playerProxyList.command(command, data);
+					this.playerProxyList[i].command(command, data);
 				}
 				this.currentPlayer.command(command, data);
+			} else {
+				// TODO: maybe error if problematic?
+			}
+		}
+	}, {
+		key: "proxyCommandToProtocol",
+		value: function proxyCommandToProtocol(command, data) {
+			// TODO: Should players emit (and have proxied) events?
+			if (this.currentPlayer) {
+				for (var i = 0; i < this.playerProxyList; i++) {
+					this.playerProxyList[i].command(command, data);
+				}
+				this.currentProtocol.command(command, data);
 			} else {
 				// TODO: maybe error if problematic?
 			}
@@ -304,6 +328,46 @@ var Client = function (_EventEmitter2) {
 }(EventEmitter);
 
 SyncPlay.Client = Client;
+
+var WebSocketProtocol = function (_SyncPlay$Protocol) {
+	_inherits(WebSocketProtocol, _SyncPlay$Protocol);
+
+	function WebSocketProtocol() {
+		_classCallCheck(this, WebSocketProtocol);
+
+		return _possibleConstructorReturn(this, (WebSocketProtocol.__proto__ || Object.getPrototypeOf(WebSocketProtocol)).call(this, "WebSocket-builtin"));
+	}
+
+	_createClass(WebSocketProtocol, [{
+		key: "connect",
+		value: function connect(options, callback) {
+			var _this6 = this;
+
+			this.socket = new WebSocket(options.url);
+
+			this.socket.addEventListener("open", function () {
+				callback();
+			});
+
+			this.socket.addEventListener("message", function (data) {
+				_this6.emit("message", data);
+			});
+		}
+	}, {
+		key: "command",
+		value: function command(_command, data) {
+			_command;
+			data;
+		}
+	}]);
+
+	return WebSocketProtocol;
+}(SyncPlay.Protocol);
+
+// Adds the protocol to SyncPlay statically, so every Client has it
+
+
+SyncPlay.Client.addStaticProtocol(new WebSocketProtocol());
 window.SyncPlay = SyncPlay;
 }());
 
