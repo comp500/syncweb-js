@@ -6,7 +6,14 @@ const concat = require("gulp-concat");
 const iife = require("gulp-iife");
 const uglify = require("gulp-uglify");
 
-const fileList = ["src/index.js", "src/core/Client.js", "src/export.js"];
+const fileList = [
+	"src/index.js",
+	"src/util/ArrayHandlers.js",
+	"src/util/EventEmitter.js",
+	"src/core/Protocol.js",
+	"src/core/Client.js",
+	"src/export.js"
+];
 
 gulp.task("default", ["minified"], function () {
 	return gulp.src(fileList)
