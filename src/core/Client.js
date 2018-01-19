@@ -22,7 +22,7 @@ class Client extends EventEmitter {
 	}
 
 	removeProtocol(protocol) {
-		return ArrayHandlers.remove(this.protocolList, protocol);
+		ArrayHandlers.remove(this.protocolList, protocol);
 	}
 
 	static addStaticProtocol(protocol) {
@@ -30,27 +30,11 @@ class Client extends EventEmitter {
 	}
 
 	static getStaticProtocol(protocol) {
-		if (typeof protocol == "string") {
-			return staticProtocolList.find((protocolFound) => {
-				return protocolFound.name == protocol;
-			});
-		} else {
-			return staticProtocolList.find((protocolFound) => {
-				return protocolFound == protocol;
-			});
-		}
+		return ArrayHandlers.get(staticProtocolList, protocol);
 	}
 
 	static removeStaticProtocol(protocol) {
-		let index;
-		if (typeof protocol == "string") {
-			index = staticProtocolList.findIndex((protocolFound) => {
-				return protocolFound.name == protocol;
-			});
-		} else {
-			index = staticProtocolList.indexOf(protocol);
-		}
-		if (index > -1) staticProtocolList.splice(index, 1);
+		ArrayHandlers.remove(staticProtocolList, protocol);
 	}
 
 	

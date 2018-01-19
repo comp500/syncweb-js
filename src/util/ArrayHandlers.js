@@ -13,14 +13,14 @@ let ArrayHandlers = {
 
 	remove(array, content) {
 		let index;
-		if (typeof protocol == "string") {
-			index = this.protocolList.findIndex((protocolFound) => {
-				return protocolFound.name == protocol;
+		if (typeof content == "string") {
+			index = array.findIndex((itemFound) => {
+				return itemFound.name == content;
 			});
 		} else {
-			index = this.protocolList.indexOf(protocol);
+			index = array.indexOf(content);
 		}
-		if (index > -1) this.protocolList.splice(index, 1);
+		if (index > -1) array.splice(index, 1);
 	}
 };
 
