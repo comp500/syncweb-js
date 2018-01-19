@@ -90,14 +90,57 @@ class Client extends EventEmitter {
 			if (this.state != 1) {
 				return; // ignore event if not in connecting state
 			}
+			this.state = 2;
 	
 			this.currentProtocol.any(this.proxyEvents);
+			this.currentProtocol.on("seturl", this.setURL);
 		});
 	}
 
 	proxyEvents(event, data) {
 		for (let i = 0; i < this.playerProxyList; i++) {
 			this.playerProxyList.on(event, data);
+		}
+		if (this.currentPlayer) {
+			// players must not respond to seturl
+			this.currentPlayer.on(event, data);
+		}
+	}
+
+	proxyCommand(command, data) {
+		if (this.currentPlayer) {
+			for (let i = 0; i < this.playerProxyList; i++) {
+				this.playerProxyList.command(command, data);
+			}
+			this.currentPlayer.command(command, data);
+		} else {
+			// TODO: maybe error if problematic?
+		}
+	}
+
+	setURL(url) {
+		if (this.currentPlayer) {
+			// TODO: what happens when a http player
+			//       and yt player coexist? how do
+			//       we choose which to use?
+			if (this.currentPlayer.supports(url)) {
+				this.proxyCommand("seturl", url);
+				return;
+			}
+		}
+		
+		let foundPlayer = this.playerList.find((player) => {
+			return player.supports(url);
+		});
+		if (foundPlayer) {
+			// if player is found, switch to it
+			this.currentPlayer.command("terminate");
+			this.currentPlayer = foundPlayer;
+			this.proxyCommand("seturl", url);
+		} else {
+			// TODO: handle no players to play url
+			//       catch-all player?
+			throw new Error("No players to handle URL available");
 		}
 	}
 	
