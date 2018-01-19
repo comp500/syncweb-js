@@ -89,6 +89,8 @@ class Client extends EventEmitter {
 		fetchedProtocol.any(this.proxyEvents);
 		fetchedProtocol.on("seturl", this.setURL);
 
+		// TODO: implement some sort of log system, for errors, connection progress etc.
+
 		fetchedProtocol.connect(options, () => {
 			if (this.state != 1) {
 				return; // ignore event if not in connecting state
@@ -114,6 +116,18 @@ class Client extends EventEmitter {
 				this.playerProxyList[i].command(command, data);
 			}
 			this.currentPlayer.command(command, data);
+		} else {
+			// TODO: maybe error if problematic?
+		}
+	}
+
+	proxyCommandToProtocol(command, data) {
+		// TODO: Should players emit (and have proxied) events?
+		if (this.currentPlayer) {
+			for (let i = 0; i < this.playerProxyList; i++) {
+				this.playerProxyList[i].command(command, data);
+			}
+			this.currentProtocol.command(command, data);
 		} else {
 			// TODO: maybe error if problematic?
 		}
