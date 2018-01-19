@@ -85,6 +85,7 @@ class Client extends EventEmitter {
 		this.currentProtocol = fetchedProtocol;
 		this.state = 1;
 
+		this.proxyEvents("connecting", protocol);
 		fetchedProtocol.any(this.proxyEvents);
 		fetchedProtocol.on("seturl", this.setURL);
 
@@ -93,6 +94,7 @@ class Client extends EventEmitter {
 				return; // ignore event if not in connecting state
 			}
 			this.state = 2;
+			this.proxyEvents("connected");
 		});
 	}
 
