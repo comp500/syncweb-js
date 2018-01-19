@@ -10,8 +10,8 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 /* eslint-disable no-unused-vars */
-var SyncPlay = {};
-SyncPlay.util = {};
+var SyncWeb = {};
+SyncWeb.util = {};
 var ArrayHandlers = {
 	get: function get(array, content) {
 		if (typeof content == "string") {
@@ -39,7 +39,7 @@ var ArrayHandlers = {
 	}
 };
 
-SyncPlay.util.ArrayHandlers = ArrayHandlers;
+SyncWeb.util.ArrayHandlers = ArrayHandlers;
 
 var EventEmitter = function () {
 	function EventEmitter() {
@@ -106,7 +106,7 @@ var EventEmitter = function () {
 	return EventEmitter;
 }();
 
-SyncPlay.util.EventEmitter = EventEmitter;
+SyncWeb.util.EventEmitter = EventEmitter;
 /* global EventEmitter */
 
 var Protocol = function (_EventEmitter) {
@@ -124,7 +124,7 @@ var Protocol = function (_EventEmitter) {
 	return Protocol;
 }(EventEmitter);
 
-SyncPlay.Protocol = Protocol;
+SyncWeb.Protocol = Protocol;
 
 var Player = function Player(name) {
 	_classCallCheck(this, Player);
@@ -132,7 +132,7 @@ var Player = function Player(name) {
 	this.name = name;
 };
 
-SyncPlay.Player = Player;
+SyncWeb.Player = Player;
 /* global EventEmitter, ArrayHandlers */
 
 var staticProtocolList = [];
@@ -327,10 +327,10 @@ var Client = function (_EventEmitter2) {
 	return Client;
 }(EventEmitter);
 
-SyncPlay.Client = Client;
+SyncWeb.Client = Client;
 
-var WebSocketProtocol = function (_SyncPlay$Protocol) {
-	_inherits(WebSocketProtocol, _SyncPlay$Protocol);
+var WebSocketProtocol = function (_SyncWeb$Protocol) {
+	_inherits(WebSocketProtocol, _SyncWeb$Protocol);
 
 	function WebSocketProtocol() {
 		_classCallCheck(this, WebSocketProtocol);
@@ -362,13 +362,13 @@ var WebSocketProtocol = function (_SyncPlay$Protocol) {
 	}]);
 
 	return WebSocketProtocol;
-}(SyncPlay.Protocol);
+}(SyncWeb.Protocol);
 
-// Adds the protocol to SyncPlay statically, so every Client has it
+// Adds the protocol to SyncWeb statically, so every Client has it
 
 
-SyncPlay.Client.addStaticProtocol(new WebSocketProtocol());
-window.SyncPlay = SyncPlay;
+SyncWeb.Client.addStaticProtocol(new WebSocketProtocol());
+window.SyncWeb = SyncWeb;
 }());
 
-//# sourceMappingURL=syncplay.js.map
+//# sourceMappingURL=syncweb.js.map
