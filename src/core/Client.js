@@ -10,10 +10,7 @@ class Client extends EventEmitter {
 		this.protocolList = staticProtocolList;
 		this.playerList = [];
 		this.playerProxyList = staticPlayerProxyList;
-	}
-
-	connect() {
-		
+		this.state = 0;
 	}
 
 	addProtocol(protocol) {
@@ -74,6 +71,34 @@ class Client extends EventEmitter {
 
 	static removeStaticPlayerProxy(playerProxy) {
 		ArrayHandlers.remove(staticPlayerProxyList, playerProxy);
+	}
+
+	connect(protocol, options) {
+		if (this.state != 0) {
+			throw new Error("Client is currently connected, must disconnect first before reconnecting.");
+		}
+
+		let fetchedProtocol = this.getProtocol(protocol);
+		if (fetchedProtocol == undefined || !fetchedProtocol) {
+			throw new Error("No protocol of that name is loaded!");
+		}
+
+		this.currentProtocol = fetchedProtocol;
+		this.state = 1;
+
+		fetchedProtocol.connect(options, () => {
+			if (this.state != 1) {
+				return; // ignore event if not in connecting state
+			}
+	
+			this.currentProtocol.any(this.proxyEvents);
+		});
+	}
+
+	proxyEvents(event, data) {
+		for (let i = 0; i < this.playerProxyList; i++) {
+			this.playerProxyList.on(event, data);
+		}
 	}
 	
 }

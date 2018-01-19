@@ -1,6 +1,7 @@
 class EventEmitter {
 	constructor() {
 		this.eventList = {};
+		this.activeEvents = true;
 	}
 
 	on(name, callback) {
@@ -10,18 +11,40 @@ class EventEmitter {
 		this.eventList[name].push(callback);
 	}
 
+	once(name, callback) {
+		let modifiedCallback = (data) => {
+			callback(data);
+			this.removeListener(name, modifiedCallback);
+		};
+		this.on(name, modifiedCallback);
+	}
+
+	any(callback) {
+		this.on("*", callback);
+	}
+
 	emit(name, data) {
+		if (!this.activeEvents) return 0;
 		if (!this.eventList[name]) return 0;
-		for (let i = 0; i < this.eventList[name]; i++) {
+		
+		for (let i = 0; i < this.eventList[name].length; i++) {
 			this.eventList[name](data);
 		}
-		return this.eventList[name].length;
+
+		if (this.eventList["*"] && this.eventList["*"].length > 0) {
+			for (let i = 0; i < this.eventList["*"].length; i++) {
+				this.eventList["*"](data);
+			}
+			return this.eventList[name].length + this.eventList["*"].length;
+		} else {
+			return this.eventList[name].length;
+		}
 	}
 
 	removeListener(name, callback) {
 		// TODO: find a way to gracefully report problems like this
 		if (!this.eventList[name]) return;
-		
+
 		let index = this.eventList[name].indexOf(callback);
 		if (index > -1) this.eventList.splice(index, 1);
 	}
