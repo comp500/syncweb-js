@@ -74,6 +74,7 @@ class Client extends EventEmitter {
 
 	connect(protocol, options) {
 		if (this.state != 0) {
+			// TODO: general error handler instead of throwing errors?
 			throw new Error("Client is currently connected, must disconnect first before reconnecting.");
 		}
 
