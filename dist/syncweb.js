@@ -228,8 +228,8 @@ var Client = function (_EventEmitter2) {
 			this.state = 1;
 
 			this.proxyEvents("connecting", protocol);
-			fetchedProtocol.any(this.proxyEvents);
-			fetchedProtocol.on("seturl", this.setURL);
+			fetchedProtocol.any(this.proxyEvents.bind(this));
+			fetchedProtocol.on("seturl", this.setURL.bind(this));
 
 			// TODO: implement some sort of log system, for errors, connection progress etc.
 
