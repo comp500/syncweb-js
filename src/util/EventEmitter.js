@@ -28,12 +28,12 @@ class EventEmitter {
 		if (!this.eventList[name]) return 0;
 
 		for (let i = 0; i < this.eventList[name].length; i++) {
-			this.eventList[name](data);
+			this.eventList[name][i](data);
 		}
 
 		if (this.eventList["*"] && this.eventList["*"].length > 0) {
 			for (let i = 0; i < this.eventList["*"].length; i++) {
-				this.eventList["*"](data);
+				this.eventList["*"][i](data);
 			}
 			return this.eventList[name].length + this.eventList["*"].length;
 		} else {
