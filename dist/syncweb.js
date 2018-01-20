@@ -77,7 +77,7 @@ var EventEmitter = function () {
 		key: "emit",
 		value: function emit(name, data) {
 			if (!this.activeEvents) return 0;
-			if (!this.eventList[name]) return 0;
+			if (!this.eventList[name] && !this.eventList["*"]) return 0;
 
 			for (var i = 0; i < this.eventList[name].length; i++) {
 				this.eventList[name][i](data);
