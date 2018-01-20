@@ -148,6 +148,7 @@ SyncWeb.PlayerProxy = PlayerProxy;
 
 var staticProtocolList = [];
 var staticPlayerProxyList = [];
+var staticPlayerList = [];
 
 var Client = function (_EventEmitter2) {
 	_inherits(Client, _EventEmitter2);
@@ -158,7 +159,7 @@ var Client = function (_EventEmitter2) {
 		var _this3 = _possibleConstructorReturn(this, (Client.__proto__ || Object.getPrototypeOf(Client)).call(this));
 
 		_this3.protocolList = staticProtocolList;
-		_this3.playerList = [];
+		_this3.playerList = staticPlayerList;
 		_this3.playerProxyList = staticPlayerProxyList;
 		_this3.state = 0;
 		return _this3;
@@ -241,6 +242,9 @@ var Client = function (_EventEmitter2) {
 				_this4.proxyEvents("connected");
 			});
 		}
+
+		// events relay status, such as "connected", "connecting" etc.
+
 	}, {
 		key: "proxyEvents",
 		value: function proxyEvents(event, data) {
@@ -252,6 +256,9 @@ var Client = function (_EventEmitter2) {
 				this.currentPlayer.on(event, data);
 			}
 		}
+
+		// commands relay information about change of state, e.g. protocol tells player to pause
+
 	}, {
 		key: "proxyCommand",
 		value: function proxyCommand(command, data) {
@@ -318,6 +325,21 @@ var Client = function (_EventEmitter2) {
 		key: "removeStaticProtocol",
 		value: function removeStaticProtocol(protocol) {
 			ArrayHandlers.remove(staticProtocolList, protocol);
+		}
+	}, {
+		key: "addStaticPlayer",
+		value: function addStaticPlayer(player) {
+			staticPlayerList.push(player);
+		}
+	}, {
+		key: "getStaticPlayer",
+		value: function getStaticPlayer(player) {
+			return ArrayHandlers.get(staticPlayerList, player);
+		}
+	}, {
+		key: "removeStaticPlayer",
+		value: function removeStaticPlayer(player) {
+			ArrayHandlers.remove(staticPlayerList, player);
 		}
 	}, {
 		key: "addStaticPlayerProxy",
