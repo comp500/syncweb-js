@@ -361,15 +361,16 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 				callback();
 			});
 
-			this.socket.addEventListener("message", function (data) {
-				_this6.emit("message", data);
+			this.socket.addEventListener("message", function (e) {
+				_this6.emit("message", e.data);
 			});
 		}
 	}, {
 		key: "command",
 		value: function command(_command, data) {
-			_command;
-			data;
+			if (_command == "send") {
+				this.socket.send(data);
+			}
 		}
 	}]);
 
