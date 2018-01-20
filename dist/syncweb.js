@@ -212,6 +212,7 @@ var Client = function (_EventEmitter2) {
 			var _this4 = this;
 
 			if (this.state != 0) {
+				// TODO: general error handler instead of throwing errors?
 				throw new Error("Client is currently connected, must disconnect first before reconnecting.");
 			}
 
@@ -240,7 +241,7 @@ var Client = function (_EventEmitter2) {
 	}, {
 		key: "proxyEvents",
 		value: function proxyEvents(event, data) {
-			for (var i = 0; i < this.playerProxyList; i++) {
+			for (var i = 0; i < this.playerProxyList.length; i++) {
 				this.playerProxyList[i].on(event, data);
 			}
 			if (this.currentPlayer) {
@@ -252,7 +253,7 @@ var Client = function (_EventEmitter2) {
 		key: "proxyCommand",
 		value: function proxyCommand(command, data) {
 			if (this.currentPlayer) {
-				for (var i = 0; i < this.playerProxyList; i++) {
+				for (var i = 0; i < this.playerProxyList.length; i++) {
 					this.playerProxyList[i].command(command, data);
 				}
 				this.currentPlayer.command(command, data);
@@ -265,7 +266,7 @@ var Client = function (_EventEmitter2) {
 		value: function proxyCommandToProtocol(command, data) {
 			// TODO: Should players emit (and have proxied) events?
 			if (this.currentPlayer) {
-				for (var i = 0; i < this.playerProxyList; i++) {
+				for (var i = 0; i < this.playerProxyList.length; i++) {
 					this.playerProxyList[i].command(command, data);
 				}
 				this.currentProtocol.command(command, data);
