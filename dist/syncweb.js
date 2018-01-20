@@ -77,20 +77,23 @@ var EventEmitter = function () {
 		key: "emit",
 		value: function emit(name, data) {
 			if (!this.activeEvents) return 0;
-			if (!this.eventList[name] && !this.eventList["*"]) return 0;
 
-			for (var i = 0; i < this.eventList[name].length; i++) {
-				this.eventList[name][i](data);
-			}
-
-			if (this.eventList["*"] && this.eventList["*"].length > 0) {
-				for (var _i = 0; _i < this.eventList["*"].length; _i++) {
-					this.eventList["*"][_i](data);
-				}
-				return this.eventList[name].length + this.eventList["*"].length;
+			var totalList = void 0;
+			if (this.eventList[name] && this.eventList["*"]) {
+				totalList = this.eventList[name].concat(this.eventList["*"]);
+			} else if (this.eventList[name]) {
+				totalList = this.eventList[name];
+			} else if (this.eventList["*"]) {
+				totalList = this.eventList["*"];
 			} else {
-				return this.eventList[name].length;
+				return 0;
 			}
+
+			for (var i = 0; i < totalList.length; i++) {
+				totalList[i](data);
+			}
+
+			return totalList.length;
 		}
 	}, {
 		key: "removeListener",
