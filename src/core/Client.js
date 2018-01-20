@@ -2,12 +2,13 @@
 
 let staticProtocolList = [];
 let staticPlayerProxyList = [];
+let staticPlayerList = [];
 
 class Client extends EventEmitter {
 	constructor() {
 		super();
 		this.protocolList = staticProtocolList;
-		this.playerList = [];
+		this.playerList = staticPlayerList;
 		this.playerProxyList = staticPlayerProxyList;
 		this.state = 0;
 	}
@@ -46,6 +47,18 @@ class Client extends EventEmitter {
 
 	removePlayer(player) {
 		ArrayHandlers.remove(this.playerList, player);
+	}
+
+	static addStaticPlayer(player) {
+		staticPlayerList.push(player);
+	}
+
+	static getStaticPlayer(player) {
+		return ArrayHandlers.get(staticPlayerList, player);
+	}
+
+	static removeStaticPlayer(player) {
+		ArrayHandlers.remove(staticPlayerList, player);
 	}
 
 	addPlayerProxy(playerProxy) {
