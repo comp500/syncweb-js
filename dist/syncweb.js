@@ -80,12 +80,12 @@ var EventEmitter = function () {
 			if (!this.eventList[name]) return 0;
 
 			for (var i = 0; i < this.eventList[name].length; i++) {
-				this.eventList[name](data);
+				this.eventList[name][i](data);
 			}
 
 			if (this.eventList["*"] && this.eventList["*"].length > 0) {
 				for (var _i = 0; _i < this.eventList["*"].length; _i++) {
-					this.eventList["*"](data);
+					this.eventList["*"][_i](data);
 				}
 				return this.eventList[name].length + this.eventList["*"].length;
 			} else {
