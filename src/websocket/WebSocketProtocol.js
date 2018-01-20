@@ -10,14 +10,15 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 			callback();
 		});
 
-		this.socket.addEventListener("message", (data) => {
-			this.emit("message", data);
+		this.socket.addEventListener("message", (e) => {
+			this.emit("message", e.data);
 		});
 	}
 
 	command(command, data) {
-		command;
-		data;
+		if (command == "send") {
+			this.socket.send(data);
+		}
 	}
 }
 
