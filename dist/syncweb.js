@@ -133,6 +133,14 @@ var Player = function Player(name) {
 };
 
 SyncWeb.Player = Player;
+
+var PlayerProxy = function PlayerProxy(name) {
+	_classCallCheck(this, PlayerProxy);
+
+	this.name = name;
+};
+
+SyncWeb.PlayerProxy = PlayerProxy;
 /* global EventEmitter, ArrayHandlers */
 
 var staticProtocolList = [];
