@@ -165,7 +165,7 @@ class Client extends EventEmitter {
 		});
 		if (foundPlayer) {
 			// if player is found, switch to it
-			this.currentPlayer.command("terminate");
+			if (this.currentPlayer) this.currentPlayer.command("terminate");
 			this.currentPlayer = foundPlayer;
 			this.proxyCommand("seturl", url);
 		} else {
