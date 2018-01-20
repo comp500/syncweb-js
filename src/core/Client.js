@@ -101,6 +101,7 @@ class Client extends EventEmitter {
 		});
 	}
 
+	// events relay status, such as "connected", "connecting" etc.
 	proxyEvents(event, data) {
 		for (let i = 0; i < this.playerProxyList.length; i++) {
 			this.playerProxyList[i].on(event, data);
@@ -111,6 +112,7 @@ class Client extends EventEmitter {
 		}
 	}
 
+	// commands relay information about change of state, e.g. protocol tells player to pause
 	proxyCommand(command, data) {
 		if (this.currentPlayer) {
 			for (let i = 0; i < this.playerProxyList.length; i++) {
