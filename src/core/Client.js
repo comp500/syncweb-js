@@ -102,7 +102,7 @@ class Client extends EventEmitter {
 	}
 
 	proxyEvents(event, data) {
-		for (let i = 0; i < this.playerProxyList; i++) {
+		for (let i = 0; i < this.playerProxyList.length; i++) {
 			this.playerProxyList[i].on(event, data);
 		}
 		if (this.currentPlayer) {
@@ -113,7 +113,7 @@ class Client extends EventEmitter {
 
 	proxyCommand(command, data) {
 		if (this.currentPlayer) {
-			for (let i = 0; i < this.playerProxyList; i++) {
+			for (let i = 0; i < this.playerProxyList.length; i++) {
 				this.playerProxyList[i].command(command, data);
 			}
 			this.currentPlayer.command(command, data);
@@ -125,7 +125,7 @@ class Client extends EventEmitter {
 	proxyCommandToProtocol(command, data) {
 		// TODO: Should players emit (and have proxied) events?
 		if (this.currentPlayer) {
-			for (let i = 0; i < this.playerProxyList; i++) {
+			for (let i = 0; i < this.playerProxyList.length; i++) {
 				this.playerProxyList[i].command(command, data);
 			}
 			this.currentProtocol.command(command, data);
