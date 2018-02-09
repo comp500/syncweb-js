@@ -12,44 +12,49 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 
 		this.socket.addEventListener("message", (e) => {
 			this.emit("message", e.data);
-
-			let parsed = JSON.parse(e.data);
-			console.log("SERVER:", parsed); // eslint-disable-line no-console
-
-			if (parsed.Error) {
-				console.log("err", parsed.Error); // eslint-disable-line no-console
-			}
-
-			if (parsed.Hello) {
-				console.log("hello", parsed.Hello); // eslint-disable-line no-console
-			}
-
-			if (parsed.Set) {
-				console.log("set", parsed.Set); // eslint-disable-line no-console
-			}
-
-			if (parsed.List) {
-				console.log("list", parsed.List); // eslint-disable-line no-console
-			}
-
-			if (parsed.State) {
-				console.log("state", parsed.State); // eslint-disable-line no-console
-				if (parsed.State.ping.yourLatency != null) {
-					this.clientRtt = parsed.State.ping.yourLatency;
-				}
-				this.latencyCalculation = parsed.State.ping.latencyCalculation;
-				if (parsed.State.ignoringOnTheFly && parsed.State.ignoringOnTheFly.server) {
-					this.serverIgnoringOnTheFly = parsed.State.ignoringOnTheFly.server;
-					this.clientIgnoringOnTheFly = 0;
-					this.stateChanged = false;
-				}
-			}
+			e.data.split("\n").forEach(messageText => {
+				this.parseMessage(messageText);
+			});
 		});
 	}
 
 	command(command, data) {
 		if (command == "send") {
 			this.socket.send(data);
+		}
+	}
+
+	parseMessage(message) {
+		let parsed = JSON.parse(message);
+		console.log("SERVER:", parsed); // eslint-disable-line no-console
+
+		if (parsed.Error) {
+			console.log("err", parsed.Error); // eslint-disable-line no-console
+		}
+
+		if (parsed.Hello) {
+			console.log("hello", parsed.Hello); // eslint-disable-line no-console
+		}
+
+		if (parsed.Set) {
+			console.log("set", parsed.Set); // eslint-disable-line no-console
+		}
+
+		if (parsed.List) {
+			console.log("list", parsed.List); // eslint-disable-line no-console
+		}
+
+		if (parsed.State) {
+			console.log("state", parsed.State); // eslint-disable-line no-console
+			if (parsed.State.ping.yourLatency != null) {
+				this.clientRtt = parsed.State.ping.yourLatency;
+			}
+			this.latencyCalculation = parsed.State.ping.latencyCalculation;
+			if (parsed.State.ignoringOnTheFly && parsed.State.ignoringOnTheFly.server) {
+				this.serverIgnoringOnTheFly = parsed.State.ignoringOnTheFly.server;
+				this.clientIgnoringOnTheFly = 0;
+				this.stateChanged = false;
+			}
 		}
 	}
 
@@ -88,6 +93,18 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 		console.log(output); // eslint-disable-line no-console
 
 		return output;
+	}
+
+	sendHello(username) {
+		return {
+			"Hello": {
+				username,
+				"room": {
+					name: "test"
+				},
+				"version": "1.5.1"
+			}
+		};
 	}
 }
 
