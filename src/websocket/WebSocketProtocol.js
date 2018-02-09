@@ -20,7 +20,7 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 
 	command(command, data) {
 		if (command == "send") {
-			this.socket.send(data);
+			this.socket.send(JSON.stringify(data));
 		}
 	}
 
@@ -56,6 +56,7 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 				this.stateChanged = false;
 			}
 		}
+		this.sendState();
 	}
 
 	sendState() {
@@ -92,11 +93,11 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 
 		console.log(output); // eslint-disable-line no-console
 
-		return output;
+		this.command("send", output);
 	}
 
 	sendHello(username) {
-		return {
+		this.command("send", {
 			"Hello": {
 				username,
 				"room": {
@@ -104,7 +105,7 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 				},
 				"version": "1.5.1"
 			}
-		};
+		});
 	}
 }
 
