@@ -385,6 +385,38 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 
 			this.socket.addEventListener("message", function (e) {
 				_this6.emit("message", e.data);
+
+				var parsed = JSON.parse(e.data);
+				console.log("SERVER:", parsed); // eslint-disable-line no-console
+
+				if (parsed.Error) {
+					console.log("err", parsed.Error); // eslint-disable-line no-console
+				}
+
+				if (parsed.Hello) {
+					console.log("hello", parsed.Hello); // eslint-disable-line no-console
+				}
+
+				if (parsed.Set) {
+					console.log("set", parsed.Set); // eslint-disable-line no-console
+				}
+
+				if (parsed.List) {
+					console.log("list", parsed.List); // eslint-disable-line no-console
+				}
+
+				if (parsed.State) {
+					console.log("state", parsed.State); // eslint-disable-line no-console
+					if (parsed.State.ping.yourLatency != null) {
+						_this6.clientRtt = parsed.State.ping.yourLatency;
+					}
+					_this6.latencyCalculation = parsed.State.ping.latencyCalculation;
+					if (parsed.State.ignoringOnTheFly && parsed.State.ignoringOnTheFly.server) {
+						_this6.serverIgnoringOnTheFly = parsed.State.ignoringOnTheFly.server;
+						_this6.clientIgnoringOnTheFly = 0;
+						_this6.stateChanged = false;
+					}
+				}
 			});
 		}
 	}, {
@@ -393,6 +425,44 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 			if (_command == "send") {
 				this.socket.send(data);
 			}
+		}
+	}, {
+		key: "sendState",
+		value: function sendState() {
+			var clientIgnoreIsNotSet = this.clientIgnoringOnTheFly == 0 || this.serverIgnoringOnTheFly != 0;
+			var output = {};
+			output.State = {};
+
+			if (clientIgnoreIsNotSet) {
+				output.State.playstate = {};
+				output.State.playstate.position = 0.0;
+				output.State.playstate.paused = true;
+				// if seek, send doSeek: true and then set seek to false
+			}
+
+			output.State.ping = {};
+			output.State.ping.latencyCalculation = this.latencyCalculation;
+			output.State.ping.clientLatencyCalculation = Date.now() / 1000;
+			output.State.ping.clientRtt = this.clientRtt;
+
+			if (this.stateChanged) {
+				this.clientIgnoringOnTheFly += 1;
+			}
+
+			if (this.serverIgnoringOnTheFly > 0 || this.clientIgnoringOnTheFly > 0) {
+				output.State.ignoringOnTheFly = {};
+				if (this.serverIgnoringOnTheFly > 0) {
+					output.State.ignoringOnTheFly.server = this.serverIgnoringOnTheFly;
+					this.serverIgnoringOnTheFly = 0;
+				}
+				if (this.clientIgnoringOnTheFly > 0) {
+					output.State.ignoringOnTheFly.client = this.clientIgnoringOnTheFly;
+				}
+			}
+
+			console.log(output); // eslint-disable-line no-console
+
+			return output;
 		}
 	}]);
 
