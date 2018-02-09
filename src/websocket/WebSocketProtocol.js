@@ -13,6 +13,8 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 		this.socket.addEventListener("message", (e) => {
 			this.emit("message", e.data);
 			e.data.split("\n").forEach(messageText => {
+				if (messageText == null) return;
+				if (messageText.length < 1) return;
 				this.parseMessage(messageText);
 			});
 		});

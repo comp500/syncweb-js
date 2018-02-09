@@ -386,6 +386,8 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 			this.socket.addEventListener("message", function (e) {
 				_this6.emit("message", e.data);
 				e.data.split("\n").forEach(function (messageText) {
+					if (messageText == null) return;
+					if (messageText.length < 1) return;
 					_this6.parseMessage(messageText);
 				});
 			});
