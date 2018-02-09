@@ -385,46 +385,53 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 
 			this.socket.addEventListener("message", function (e) {
 				_this6.emit("message", e.data);
-
-				var parsed = JSON.parse(e.data);
-				console.log("SERVER:", parsed); // eslint-disable-line no-console
-
-				if (parsed.Error) {
-					console.log("err", parsed.Error); // eslint-disable-line no-console
-				}
-
-				if (parsed.Hello) {
-					console.log("hello", parsed.Hello); // eslint-disable-line no-console
-				}
-
-				if (parsed.Set) {
-					console.log("set", parsed.Set); // eslint-disable-line no-console
-				}
-
-				if (parsed.List) {
-					console.log("list", parsed.List); // eslint-disable-line no-console
-				}
-
-				if (parsed.State) {
-					console.log("state", parsed.State); // eslint-disable-line no-console
-					if (parsed.State.ping.yourLatency != null) {
-						_this6.clientRtt = parsed.State.ping.yourLatency;
-					}
-					_this6.latencyCalculation = parsed.State.ping.latencyCalculation;
-					if (parsed.State.ignoringOnTheFly && parsed.State.ignoringOnTheFly.server) {
-						_this6.serverIgnoringOnTheFly = parsed.State.ignoringOnTheFly.server;
-						_this6.clientIgnoringOnTheFly = 0;
-						_this6.stateChanged = false;
-					}
-				}
+				e.data.split("\n").forEach(function (messageText) {
+					_this6.parseMessage(messageText);
+				});
 			});
 		}
 	}, {
 		key: "command",
 		value: function command(_command, data) {
 			if (_command == "send") {
-				this.socket.send(data);
+				this.socket.send(JSON.stringify(data));
 			}
+		}
+	}, {
+		key: "parseMessage",
+		value: function parseMessage(message) {
+			var parsed = JSON.parse(message);
+			console.log("SERVER:", parsed); // eslint-disable-line no-console
+
+			if (parsed.Error) {
+				console.log("err", parsed.Error); // eslint-disable-line no-console
+			}
+
+			if (parsed.Hello) {
+				console.log("hello", parsed.Hello); // eslint-disable-line no-console
+			}
+
+			if (parsed.Set) {
+				console.log("set", parsed.Set); // eslint-disable-line no-console
+			}
+
+			if (parsed.List) {
+				console.log("list", parsed.List); // eslint-disable-line no-console
+			}
+
+			if (parsed.State) {
+				console.log("state", parsed.State); // eslint-disable-line no-console
+				if (parsed.State.ping.yourLatency != null) {
+					this.clientRtt = parsed.State.ping.yourLatency;
+				}
+				this.latencyCalculation = parsed.State.ping.latencyCalculation;
+				if (parsed.State.ignoringOnTheFly && parsed.State.ignoringOnTheFly.server) {
+					this.serverIgnoringOnTheFly = parsed.State.ignoringOnTheFly.server;
+					this.clientIgnoringOnTheFly = 0;
+					this.stateChanged = false;
+				}
+			}
+			this.sendState();
 		}
 	}, {
 		key: "sendState",
@@ -462,7 +469,20 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 
 			console.log(output); // eslint-disable-line no-console
 
-			return output;
+			this.command("send", output);
+		}
+	}, {
+		key: "sendHello",
+		value: function sendHello(username) {
+			this.command("send", {
+				"Hello": {
+					username: username,
+					"room": {
+						name: "test"
+					},
+					"version": "1.5.1"
+				}
+			});
 		}
 	}]);
 
