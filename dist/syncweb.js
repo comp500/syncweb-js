@@ -90,7 +90,7 @@ var EventEmitter = function () {
 			}
 
 			for (var i = 0; i < totalList.length; i++) {
-				totalList[i](data);
+				totalList[i](name, data);
 			}
 
 			return totalList.length;
@@ -291,7 +291,7 @@ var Client = function (_EventEmitter2) {
 		}
 	}, {
 		key: "setURL",
-		value: function setURL(url) {
+		value: function setURL(event, url) {
 			if (this.currentPlayer) {
 				// TODO: what happens when a http player
 				//       and yt player coexist? how do
@@ -466,7 +466,7 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 			}
 
 			if (parsed.State) {
-				console.log("state", parsed.State); // eslint-disable-line no-console
+				//console.log("state", parsed.State); // eslint-disable-line no-console
 				if (parsed.State.ping.yourLatency != null) {
 					this.clientRtt = parsed.State.ping.yourLatency;
 				}
@@ -481,12 +481,12 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 						var doSeek = parsed.State.playstate.doSeek;
 						// falsy -> false, because null/undefined
 						if (!doSeek) doSeek = false;
-						console.log({ // eslint-disable-line no-console
-							setBy: parsed.State.playstate.setBy,
-							paused: parsed.State.playstate.paused,
-							position: parsed.State.playstate.position,
-							doSeek: doSeek
-						});
+						/*console.log({ // eslint-disable-line no-console
+      	setBy: parsed.State.playstate.setBy,
+      	paused: parsed.State.playstate.paused,
+      	position: parsed.State.playstate.position,
+      	doSeek
+      });*/
 
 						this.currentPosition = parsed.State.playstate.position;
 						if (doSeek) {

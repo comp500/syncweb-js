@@ -154,7 +154,7 @@ class Client extends EventEmitter {
 		}
 	}
 
-	setURL(url) {
+	setURL(event, url) {
 		if (this.currentPlayer) {
 			// TODO: what happens when a http player
 			//       and yt player coexist? how do

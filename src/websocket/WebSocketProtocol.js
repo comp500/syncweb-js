@@ -86,7 +86,7 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 		}
 
 		if (parsed.State) {
-			console.log("state", parsed.State); // eslint-disable-line no-console
+			//console.log("state", parsed.State); // eslint-disable-line no-console
 			if (parsed.State.ping.yourLatency != null) {
 				this.clientRtt = parsed.State.ping.yourLatency;
 			}
@@ -101,12 +101,12 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 					let doSeek = parsed.State.playstate.doSeek;
 					// falsy -> false, because null/undefined
 					if (!doSeek) doSeek = false;
-					console.log({ // eslint-disable-line no-console
+					/*console.log({ // eslint-disable-line no-console
 						setBy: parsed.State.playstate.setBy,
 						paused: parsed.State.playstate.paused,
 						position: parsed.State.playstate.position,
 						doSeek
-					});
+					});*/
 
 					this.currentPosition = parsed.State.playstate.position;
 					if (doSeek) {
