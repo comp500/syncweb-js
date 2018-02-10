@@ -4,6 +4,7 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 
 		this.currentPosition = 0.0;
 		this.paused = true;
+		this.doSeek = false;
 	}
 
 	connect(options, callback) {
@@ -33,6 +34,16 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 		}
 		if (command == "settime") {
 			this.currentPosition = data;
+		}
+		if (command == "seek") {
+			this.currentPosition = data;
+			this.doSeek = true;
+		}
+		if (command == "pause") {
+			this.paused = true;
+		}
+		if (command == "unpause") {
+			this.paused = false;
 		}
 	}
 
@@ -117,7 +128,10 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 			output.State.playstate = {};
 			output.State.playstate.position = this.currentPosition;
 			output.State.playstate.paused = this.paused;
-			// if seek, send doSeek: true and then set seek to false
+			if (this.doSeek) {
+				output.State.playstate.doSeek = true;
+				this.doSeek = false;
+			}
 		}
 
 		output.State.ping = {};

@@ -378,6 +378,7 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 
 		_this5.currentPosition = 0.0;
 		_this5.paused = true;
+		_this5.doSeek = false;
 		return _this5;
 	}
 
@@ -413,6 +414,16 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 			}
 			if (_command == "settime") {
 				this.currentPosition = data;
+			}
+			if (_command == "seek") {
+				this.currentPosition = data;
+				this.doSeek = true;
+			}
+			if (_command == "pause") {
+				this.paused = true;
+			}
+			if (_command == "unpause") {
+				this.paused = false;
 			}
 		}
 	}, {
@@ -498,7 +509,10 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 				output.State.playstate = {};
 				output.State.playstate.position = this.currentPosition;
 				output.State.playstate.paused = this.paused;
-				// if seek, send doSeek: true and then set seek to false
+				if (this.doSeek) {
+					output.State.playstate.doSeek = true;
+					this.doSeek = false;
+				}
 			}
 
 			output.State.ping = {};
