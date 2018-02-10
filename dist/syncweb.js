@@ -163,6 +163,10 @@ var Client = function (_EventEmitter2) {
 		_this3.playerProxyList = staticPlayerProxyList;
 		_this3.state = 0;
 		_this3.playerElement = playerElement;
+
+		_this3.playerList.forEach(function (player) {
+			player.initialise(_this3);
+		});
 		return _this3;
 	}
 
