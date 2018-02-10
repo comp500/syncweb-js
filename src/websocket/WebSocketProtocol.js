@@ -26,6 +26,7 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 	}
 
 	command(command, data) {
+		console.log("command: ", command, data); // eslint-disable-line no-console
 		if (command == "send") {
 			this.socket.send(JSON.stringify(data));
 		}
@@ -108,7 +109,7 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 						doSeek
 					});*/
 
-					this.currentPosition = parsed.State.playstate.position;
+					//this.currentPosition = parsed.State.playstate.position;
 					if (doSeek && !this.doSeek) {
 						this.emit("seek", parsed.State.playstate.position);
 					}
