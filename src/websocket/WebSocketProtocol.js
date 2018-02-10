@@ -4,6 +4,9 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 
 		this.currentPosition = 0.0;
 		this.paused = true;
+		window.setInterval(() => {
+			this.currentPosition++;
+		}, 1000);
 	}
 
 	connect(options, callback) {
