@@ -99,6 +99,9 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 
 					this.paused = parsed.State.playstate.paused;
 					this.currentPosition = parsed.State.playstate.position;
+					if (doSeek) {
+						this.emit("seek", parsed.State.playstate.position);
+					}
 				}
 			}
 		}

@@ -153,7 +153,7 @@ var staticPlayerList = [];
 var Client = function (_EventEmitter2) {
 	_inherits(Client, _EventEmitter2);
 
-	function Client() {
+	function Client(playerElement) {
 		_classCallCheck(this, Client);
 
 		var _this3 = _possibleConstructorReturn(this, (Client.__proto__ || Object.getPrototypeOf(Client)).call(this));
@@ -162,6 +162,7 @@ var Client = function (_EventEmitter2) {
 		_this3.playerList = staticPlayerList;
 		_this3.playerProxyList = staticPlayerProxyList;
 		_this3.state = 0;
+		_this3.playerElement = playerElement;
 		return _this3;
 	}
 
@@ -373,11 +374,6 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 
 		_this5.currentPosition = 0.0;
 		_this5.paused = true;
-		window.setInterval(function () {
-			if (!_this5.paused) {
-				_this5.currentPosition++;
-			}
-		}, 1000);
 		return _this5;
 	}
 
@@ -407,6 +403,12 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 		value: function command(_command, data) {
 			if (_command == "send") {
 				this.socket.send(JSON.stringify(data));
+			}
+			if (_command == "setmeta") {
+				this.sendFile(data.duration, data.name);
+			}
+			if (_command == "settime") {
+				this.currentPosition = data;
 			}
 		}
 	}, {
@@ -473,6 +475,9 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 
 						this.paused = parsed.State.playstate.paused;
 						this.currentPosition = parsed.State.playstate.position;
+						if (doSeek) {
+							this.emit("seek", parsed.State.playstate.position);
+						}
 					}
 				}
 			}
@@ -559,8 +564,9 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 		}
 	}, {
 		key: "sendFile",
-		value: function sendFile() {
-			var file = { "duration": 60.534, "name": "test.mkv", "size": 6302151 };
+		value: function sendFile(duration, name) {
+			// TODO size attribute for non-html5 video players?
+			var file = { duration: duration, name: name };
 			this.command("send", {
 				"Set": {
 					file: file
