@@ -381,6 +381,7 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 
 			this.socket.addEventListener("open", function () {
 				callback();
+				_this6.sendHello("comp500", "test");
 			});
 
 			this.socket.addEventListener("message", function (e) {
@@ -407,18 +408,35 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 
 			if (parsed.Error) {
 				console.log("err", parsed.Error); // eslint-disable-line no-console
+				// TODO disconnect
 			}
 
 			if (parsed.Hello) {
 				console.log("hello", parsed.Hello); // eslint-disable-line no-console
+				// TODO handle failed logins, etc.
+				this.serverDetails = {
+					version: parsed.Hello.version,
+					realversion: parsed.Hello.realversion,
+					features: parsed.Hello.features,
+					motd: parsed.Hello.motd
+				};
+				var connectedString = "Connected to server, version " + parsed.Hello.version + ".";
+				if (parsed.Hello.motd) {
+					connectedString += " MOTD:\n\t\t\t\t" + parsed.Hello.motd;
+				}
+				this.emit("connected", connectedString);
+				// roomEventRequest?
 			}
 
 			if (parsed.Set) {
 				console.log("set", parsed.Set); // eslint-disable-line no-console
+				// TODO users, playlists
 			}
 
 			if (parsed.List) {
 				console.log("list", parsed.List); // eslint-disable-line no-console
+				console.log("roomsList", Object.keys(parsed.List)); // eslint-disable-line no-console
+				console.log("userList", Object.keys(parsed.List[this.currentRoom])); // eslint-disable-line no-console
 			}
 
 			if (parsed.State) {
@@ -431,6 +449,19 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 					this.serverIgnoringOnTheFly = parsed.State.ignoringOnTheFly.server;
 					this.clientIgnoringOnTheFly = 0;
 					this.stateChanged = false;
+				}
+				if (parsed.State.playstate) {
+					if (parsed.State.playstate.setBy && parsed.State.playstate.setBy != this.currentUsername) {
+						var doSeek = parsed.State.playstate.doSeek;
+						// falsy -> false, because null/undefined
+						if (!doSeek) doSeek = false;
+						console.log({ // eslint-disable-line no-console
+							setBy: parsed.State.playstate.setBy,
+							paused: parsed.State.playstate.paused,
+							position: parsed.State.playstate.position,
+							doSeek: doSeek
+						});
+					}
 				}
 			}
 			this.sendState();
@@ -475,16 +506,30 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 		}
 	}, {
 		key: "sendHello",
-		value: function sendHello(username) {
-			this.command("send", {
+		value: function sendHello(username, room, password) {
+			this.currentUsername = username;
+			this.currentRoom = room;
+
+			var packet = {
 				"Hello": {
 					username: username,
 					"room": {
-						name: "test"
+						name: room
 					},
 					"version": "1.5.1"
 				}
-			});
+			};
+
+			if (password) {
+				packet.Hello.password = password;
+			}
+
+			this.command("send", packet);
+		}
+	}, {
+		key: "sendListRequest",
+		value: function sendListRequest() {
+			this.command("send", { "List": null });
 		}
 	}]);
 
