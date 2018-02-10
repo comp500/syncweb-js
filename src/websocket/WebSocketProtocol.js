@@ -1,6 +1,9 @@
 class WebSocketProtocol extends SyncWeb.Protocol {
 	constructor() {
 		super("WebSocket-builtin");
+
+		this.currentPosition = 0.0;
+		this.paused = true;
 	}
 
 	connect(options, callback) {
@@ -87,6 +90,9 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 						position: parsed.State.playstate.position,
 						doSeek
 					});
+
+					this.paused = parsed.State.playstate.paused;
+					this.currentPosition = parsed.State.playstate.position;
 				}
 			}
 		}
@@ -100,8 +106,8 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 
 		if (clientIgnoreIsNotSet) {
 			output.State.playstate = {};
-			output.State.playstate.position = 0.0;
-			output.State.playstate.paused = true;
+			output.State.playstate.position = this.currentPosition;
+			output.State.playstate.paused = this.paused;
 			// if seek, send doSeek: true and then set seek to false
 		}
 
@@ -153,6 +159,28 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 
 	sendListRequest() {
 		this.command("send", {"List": null});
+	}
+
+	sendReady(ready) {
+		let packet = {
+			"Set": {
+				"ready": {
+					isReady: ready,
+					manuallyInitiated: true,
+					username: this.currentUsername
+				}
+			}
+		};
+		this.command("send", packet);
+	}
+
+	sendFile() {
+		let file = {"duration": 60.534, "name": "test.mkv", "size": 6302151};
+		this.command("send", {
+			"Set": {
+				file
+			}
+		});
 	}
 }
 

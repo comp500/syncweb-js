@@ -369,7 +369,11 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 	function WebSocketProtocol() {
 		_classCallCheck(this, WebSocketProtocol);
 
-		return _possibleConstructorReturn(this, (WebSocketProtocol.__proto__ || Object.getPrototypeOf(WebSocketProtocol)).call(this, "WebSocket-builtin"));
+		var _this5 = _possibleConstructorReturn(this, (WebSocketProtocol.__proto__ || Object.getPrototypeOf(WebSocketProtocol)).call(this, "WebSocket-builtin"));
+
+		_this5.currentPosition = 0.0;
+		_this5.paused = true;
+		return _this5;
 	}
 
 	_createClass(WebSocketProtocol, [{
@@ -461,6 +465,9 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 							position: parsed.State.playstate.position,
 							doSeek: doSeek
 						});
+
+						this.paused = parsed.State.playstate.paused;
+						this.currentPosition = parsed.State.playstate.position;
 					}
 				}
 			}
@@ -475,8 +482,8 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 
 			if (clientIgnoreIsNotSet) {
 				output.State.playstate = {};
-				output.State.playstate.position = 0.0;
-				output.State.playstate.paused = true;
+				output.State.playstate.position = this.currentPosition;
+				output.State.playstate.paused = this.paused;
 				// if seek, send doSeek: true and then set seek to false
 			}
 
@@ -530,6 +537,30 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 		key: "sendListRequest",
 		value: function sendListRequest() {
 			this.command("send", { "List": null });
+		}
+	}, {
+		key: "sendReady",
+		value: function sendReady(ready) {
+			var packet = {
+				"Set": {
+					"ready": {
+						isReady: ready,
+						manuallyInitiated: true,
+						username: this.currentUsername
+					}
+				}
+			};
+			this.command("send", packet);
+		}
+	}, {
+		key: "sendFile",
+		value: function sendFile() {
+			var file = { "duration": 60.534, "name": "test.mkv", "size": 6302151 };
+			this.command("send", {
+				"Set": {
+					file: file
+				}
+			});
 		}
 	}]);
 
