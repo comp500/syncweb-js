@@ -185,7 +185,7 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 
 	sendFile(duration, name) {
 		// TODO size attribute for non-html5 video players?
-		let file = {duration, name};
+		let file = {duration, name, size: 1};
 		this.command("send", {
 			"Set": {
 				file

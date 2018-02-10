@@ -570,7 +570,7 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 		key: "sendFile",
 		value: function sendFile(duration, name) {
 			// TODO size attribute for non-html5 video players?
-			var file = { duration: duration, name: name };
+			var file = { duration: duration, name: name, size: 1 };
 			this.command("send", {
 				"Set": {
 					file: file
