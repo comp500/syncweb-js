@@ -373,6 +373,11 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 
 		_this5.currentPosition = 0.0;
 		_this5.paused = true;
+		window.setInterval(function () {
+			if (!_this5.paused) {
+				_this5.currentPosition++;
+			}
+		}, 1000);
 		return _this5;
 	}
 

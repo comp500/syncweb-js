@@ -5,7 +5,9 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 		this.currentPosition = 0.0;
 		this.paused = true;
 		window.setInterval(() => {
-			this.currentPosition++;
+			if (!this.paused) {
+				this.currentPosition++;
+			}
 		}, 1000);
 	}
 
