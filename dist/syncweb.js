@@ -488,10 +488,18 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 							doSeek: doSeek
 						});
 
-						this.paused = parsed.State.playstate.paused;
 						this.currentPosition = parsed.State.playstate.position;
 						if (doSeek) {
 							this.emit("seek", parsed.State.playstate.position);
+						}
+						if (this.paused != parsed.State.playstate.paused) {
+							if (parsed.State.playstate.paused) {
+								this.emit("pause");
+								this.paused = true;
+							} else {
+								this.emit("unpause");
+								this.paused = false;
+							}
 						}
 					}
 				}
