@@ -235,7 +235,9 @@ var Client = function (_EventEmitter2) {
 
 			this.proxyEvents("connecting", protocol);
 			fetchedProtocol.any(this.proxyEvents.bind(this));
-			fetchedProtocol.on("seturl", this.setURL.bind(this));
+			fetchedProtocol.on("seturl", function (event, url) {
+				_this4.setURL(url);
+			});
 
 			// TODO: implement some sort of log system, for errors, connection progress etc.
 
@@ -291,7 +293,7 @@ var Client = function (_EventEmitter2) {
 		}
 	}, {
 		key: "setURL",
-		value: function setURL(event, url) {
+		value: function setURL(url) {
 			if (this.currentPlayer) {
 				// TODO: what happens when a http player
 				//       and yt player coexist? how do
@@ -489,7 +491,7 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
       });*/
 
 						this.currentPosition = parsed.State.playstate.position;
-						if (doSeek) {
+						if (doSeek && !this.doSeek) {
 							this.emit("seek", parsed.State.playstate.position);
 						}
 						if (this.paused != parsed.State.playstate.paused) {

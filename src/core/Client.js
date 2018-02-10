@@ -106,7 +106,9 @@ class Client extends EventEmitter {
 
 		this.proxyEvents("connecting", protocol);
 		fetchedProtocol.any(this.proxyEvents.bind(this));
-		fetchedProtocol.on("seturl", this.setURL.bind(this));
+		fetchedProtocol.on("seturl", (event, url) => {
+			this.setURL(url);
+		});
 
 		// TODO: implement some sort of log system, for errors, connection progress etc.
 
@@ -154,7 +156,7 @@ class Client extends EventEmitter {
 		}
 	}
 
-	setURL(event, url) {
+	setURL(url) {
 		if (this.currentPlayer) {
 			// TODO: what happens when a http player
 			//       and yt player coexist? how do
