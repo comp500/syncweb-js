@@ -39,12 +39,15 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 		if (command == "seek") {
 			this.currentPosition = data;
 			this.doSeek = true;
+			this.sendState();
 		}
 		if (command == "pause") {
 			this.paused = true;
+			this.sendState();
 		}
 		if (command == "unpause") {
 			this.paused = false;
+			this.sendState();
 		}
 	}
 

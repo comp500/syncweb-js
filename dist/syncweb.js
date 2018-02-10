@@ -421,12 +421,15 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 			if (_command == "seek") {
 				this.currentPosition = data;
 				this.doSeek = true;
+				this.sendState();
 			}
 			if (_command == "pause") {
 				this.paused = true;
+				this.sendState();
 			}
 			if (_command == "unpause") {
 				this.paused = false;
+				this.sendState();
 			}
 		}
 	}, {
