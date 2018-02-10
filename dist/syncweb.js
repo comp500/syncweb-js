@@ -408,6 +408,7 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 	}, {
 		key: "command",
 		value: function command(_command, data) {
+			console.log("command: ", _command, data); // eslint-disable-line no-console
 			if (_command == "send") {
 				this.socket.send(JSON.stringify(data));
 			}
@@ -490,7 +491,7 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
       	doSeek
       });*/
 
-						this.currentPosition = parsed.State.playstate.position;
+						//this.currentPosition = parsed.State.playstate.position;
 						if (doSeek && !this.doSeek) {
 							this.emit("seek", parsed.State.playstate.position);
 						}
