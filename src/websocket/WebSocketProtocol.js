@@ -4,11 +4,6 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 
 		this.currentPosition = 0.0;
 		this.paused = true;
-		window.setInterval(() => {
-			if (!this.paused) {
-				this.currentPosition++;
-			}
-		}, 1000);
 	}
 
 	connect(options, callback) {
@@ -32,6 +27,12 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 	command(command, data) {
 		if (command == "send") {
 			this.socket.send(JSON.stringify(data));
+		}
+		if (command == "setmeta") {
+			this.sendFile(data.duration, data.name);
+		}
+		if (command == "settime") {
+			this.currentPosition = data;
 		}
 	}
 
@@ -179,8 +180,9 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 		this.command("send", packet);
 	}
 
-	sendFile() {
-		let file = {"duration": 60.534, "name": "test.mkv", "size": 6302151};
+	sendFile(duration, name) {
+		// TODO size attribute for non-html5 video players?
+		let file = {duration, name};
 		this.command("send", {
 			"Set": {
 				file

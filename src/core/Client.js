@@ -5,12 +5,13 @@ let staticPlayerProxyList = [];
 let staticPlayerList = [];
 
 class Client extends EventEmitter {
-	constructor() {
+	constructor(playerElement) {
 		super();
 		this.protocolList = staticProtocolList;
 		this.playerList = staticPlayerList;
 		this.playerProxyList = staticPlayerProxyList;
 		this.state = 0;
+		this.playerElement = playerElement;
 	}
 
 	addProtocol(protocol) {
