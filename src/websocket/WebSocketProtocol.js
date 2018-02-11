@@ -13,7 +13,11 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 
 		this.socket.addEventListener("open", () => {
 			callback();
-			this.sendHello("comp500", "test");
+			if (options.password) {
+				this.sendHello(options.name, options.room, options.password);
+			} else {
+				this.sendHello(options.name, options.room);
+			}
 			this.sendReady();
 		});
 
