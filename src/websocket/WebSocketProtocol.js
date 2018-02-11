@@ -96,10 +96,10 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 			console.log("list", parsed.List); // eslint-disable-line no-console
 			console.log("roomsList", Object.keys(parsed.List)); // eslint-disable-line no-console
 			console.log("userList", Object.keys(parsed.List[this.currentRoom])); // eslint-disable-line no-console
+			this.emit("roomdetails", parsed.List);
 		}
 
 		if (parsed.State) {
-			//console.log("state", parsed.State); // eslint-disable-line no-console
 			if (parsed.State.ping.yourLatency != null) {
 				this.clientRtt = parsed.State.ping.yourLatency;
 			}
@@ -111,18 +111,7 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 			}
 			if (parsed.State.playstate) {
 				if (parsed.State.playstate.setBy && parsed.State.playstate.setBy != this.currentUsername) {
-					let doSeek = parsed.State.playstate.doSeek;
-					// falsy -> false, because null/undefined
-					if (!doSeek) doSeek = false;
-					/*console.log({ // eslint-disable-line no-console
-						setBy: parsed.State.playstate.setBy,
-						paused: parsed.State.playstate.paused,
-						position: parsed.State.playstate.position,
-						doSeek
-					});*/
-
-					//this.currentPosition = parsed.State.playstate.position;
-					if (doSeek && !this.doSeek) {
+					if (parsed.State.playstate.doSeek && !this.doSeek) {
 						this.emit("seek", parsed.State.playstate.position);
 					}
 					if (this.paused != parsed.State.playstate.paused) {
@@ -220,6 +209,8 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 
 	sendFile(duration, name) {
 		// TODO size attribute for non-html5 video players?
+		// 0 means unknown duration
+		if (!duration) duration = 0;
 		let file = {duration, name, size: 0};
 		this.event("send", {
 			"Set": {
