@@ -529,28 +529,42 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 								}
 							}
 						} else {
-							// eradicate all of this user
-							var details = {};
-							Object.keys(_this8.roomdetails).some(function (room) {
-								return Object.keys(_this8.roomdetails[room]).some(function (foundUser) {
-									if (foundUser == key) {
-										details = _this8.roomdetails[room][foundUser];
-										delete _this8.roomdetails[room][foundUser];
-										if (Object.keys(_this8.roomdetails[room]).length == 0) {
-											delete _this8.roomdetails[room];
+							if (_this8.roomdetails[user.room.name][key]) {
+								// user hasn't moved
+							} else {
+								// eradicate all of this user
+								var details = {};
+								Object.keys(_this8.roomdetails).some(function (room) {
+									return Object.keys(_this8.roomdetails[room]).some(function (foundUser) {
+										if (foundUser == key) {
+											details = _this8.roomdetails[room][foundUser];
+											delete _this8.roomdetails[room][foundUser];
+											if (Object.keys(_this8.roomdetails[room]).length == 0) {
+												delete _this8.roomdetails[room];
+											}
+											return true;
 										}
-										return true;
-									}
+									});
 								});
-							});
-							if (!_this8.roomdetails[user.room.name]) {
-								_this8.roomdetails[user.room.name] = {};
+								if (!_this8.roomdetails[user.room.name]) {
+									_this8.roomdetails[user.room.name] = {};
+								}
+								_this8.roomdetails[user.room.name][key] = details;
+								_this8.emit("moved", { "user": key, "room": user.room.name });
 							}
-							_this8.roomdetails[user.room.name][key] = details;
-							_this8.emit("moved", { "user": key, "room": user.room.name });
+						}
+						if (user.file) {
+							_this8.roomdetails[user.room.name][key].file = user.file;
 						}
 						_this8.emit("roomdetails", _this8.roomdetails);
 					});
+				}
+
+				if (parsed.Set.ready) {
+					this.roomdetails[parsed.Set.ready.username].isReady = parsed.Set.ready.isReady;
+					this.roomdetails[parsed.Set.ready.username].manuallyInitiated = parsed.Set.ready.manuallyInitiated;
+
+					this.emit("roomdetails", this.roomdetails);
 				}
 			}
 

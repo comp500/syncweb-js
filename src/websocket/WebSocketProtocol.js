@@ -115,28 +115,42 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 							}
 						}
 					} else {
-						// eradicate all of this user
-						let details = {};
-						Object.keys(this.roomdetails).some((room) => {
-							return Object.keys(this.roomdetails[room]).some((foundUser) => {
-								if (foundUser == key) {
-									details = this.roomdetails[room][foundUser];
-									delete this.roomdetails[room][foundUser];
-									if (Object.keys(this.roomdetails[room]).length == 0) {
-										delete this.roomdetails[room];
+						if (this.roomdetails[user.room.name][key]) {
+							// user hasn't moved
+						} else {
+							// eradicate all of this user
+							let details = {};
+							Object.keys(this.roomdetails).some((room) => {
+								return Object.keys(this.roomdetails[room]).some((foundUser) => {
+									if (foundUser == key) {
+										details = this.roomdetails[room][foundUser];
+										delete this.roomdetails[room][foundUser];
+										if (Object.keys(this.roomdetails[room]).length == 0) {
+											delete this.roomdetails[room];
+										}
+										return true;
 									}
-									return true;
-								}
+								});
 							});
-						});
-						if (!this.roomdetails[user.room.name]) {
-							this.roomdetails[user.room.name] = {};
+							if (!this.roomdetails[user.room.name]) {
+								this.roomdetails[user.room.name] = {};
+							}
+							this.roomdetails[user.room.name][key] = details;
+							this.emit("moved", {"user": key, "room": user.room.name});
 						}
-						this.roomdetails[user.room.name][key] = details;
-						this.emit("moved", {"user": key, "room": user.room.name});
+					}
+					if (user.file) {
+						this.roomdetails[user.room.name][key].file = user.file;
 					}
 					this.emit("roomdetails", this.roomdetails);
 				});
+			}
+
+			if (parsed.Set.ready) {
+				this.roomdetails[parsed.Set.ready.username].isReady = parsed.Set.ready.isReady;
+				this.roomdetails[parsed.Set.ready.username].manuallyInitiated = parsed.Set.ready.manuallyInitiated;
+
+				this.emit("roomdetails", this.roomdetails);
 			}
 		}
 
