@@ -381,6 +381,7 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 		_this5.currentPosition = 0.0;
 		_this5.paused = true;
 		_this5.doSeek = false;
+		_this5.isReady = false;
 		return _this5;
 	}
 
@@ -394,7 +395,7 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 			this.socket.addEventListener("open", function () {
 				callback();
 				_this6.sendHello("comp500", "test");
-				_this6.sendReady(false);
+				_this6.sendReady();
 			});
 
 			this.socket.addEventListener("message", function (e) {
@@ -430,6 +431,10 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 			}
 			if (_command == "unpause") {
 				this.paused = false;
+				if (!this.ready) {
+					this.ready = true;
+					this.sendReady();
+				}
 				this.sendState();
 			}
 		}
@@ -583,11 +588,11 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 		}
 	}, {
 		key: "sendReady",
-		value: function sendReady(ready) {
+		value: function sendReady() {
 			var packet = {
 				"Set": {
 					"ready": {
-						isReady: ready,
+						isReady: this.isReady,
 						manuallyInitiated: true,
 						username: this.currentUsername
 					}
