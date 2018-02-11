@@ -130,6 +130,14 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 				}
 			}
 		}
+
+		if (parsed.Chat) {
+			this.emit("chat", {
+				name: parsed.Chat.username,
+				message: parsed.Chat.message
+			});
+		}
+		
 		this.sendState();
 	}
 
