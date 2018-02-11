@@ -5,6 +5,7 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 		this.currentPosition = 0.0;
 		this.paused = true;
 		this.doSeek = false;
+		this.isReady = false;
 	}
 
 	connect(options, callback) {
@@ -13,7 +14,7 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 		this.socket.addEventListener("open", () => {
 			callback();
 			this.sendHello("comp500", "test");
-			this.sendReady(false);
+			this.sendReady();
 		});
 
 		this.socket.addEventListener("message", (e) => {
@@ -48,6 +49,10 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 		}
 		if (command == "unpause") {
 			this.paused = false;
+			if (!this.ready) {
+				this.ready = true;
+				this.sendReady();
+			}
 			this.sendState();
 		}
 	}
@@ -197,11 +202,11 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 		this.command("send", {"List": null});
 	}
 
-	sendReady(ready) {
+	sendReady() {
 		let packet = {
 			"Set": {
 				"ready": {
-					isReady: ready,
+					isReady: this.isReady,
 					manuallyInitiated: true,
 					username: this.currentUsername
 				}
