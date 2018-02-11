@@ -6,6 +6,7 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 		this.paused = true;
 		this.doSeek = false;
 		this.isReady = false;
+		this.roomdetails = {};
 	}
 
 	connect(options, callback) {
@@ -19,6 +20,7 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 				this.sendHello(options.name, options.room);
 			}
 			this.sendReady();
+			this.sendListRequest();
 		});
 
 		this.socket.addEventListener("message", (e) => {
@@ -93,13 +95,31 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 
 		if (parsed.Set) {
 			console.log("set", parsed.Set); // eslint-disable-line no-console
-			// TODO users, playlists
+			// TODO playlists
+			if (parsed.Set.user) {
+				Object.keys(parsed.Set.user).forEach((key) => {
+					let user = parsed.Set.user[key];
+					if (user.event.joined) {
+						this.emit("joined", key);
+						if (!this.roomdetails[user.room.name]) {
+							this.roomdetails[user.room.name] = {};
+						}
+						this.roomdetails[user.room.name][key] = {};
+					}
+					if (user.event.left) {
+						this.emit("left", key);
+						delete this.roomdetails[user.room.name][key];
+						if (Object.keys(this.roomdetails[user.room.name]).length == 0) {
+							delete this.roomdetails[user.room.name];
+						}
+					}
+					this.emit("roomdetails", this.roomdetails);
+				});
+			}
 		}
 
 		if (parsed.List) {
-			console.log("list", parsed.List); // eslint-disable-line no-console
-			console.log("roomsList", Object.keys(parsed.List)); // eslint-disable-line no-console
-			console.log("userList", Object.keys(parsed.List[this.currentRoom])); // eslint-disable-line no-console
+			this.roomdetails = parsed.List;
 			this.emit("roomdetails", parsed.List);
 		}
 
@@ -137,7 +157,7 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 				message: parsed.Chat.message
 			});
 		}
-		
+
 		this.sendState();
 	}
 
