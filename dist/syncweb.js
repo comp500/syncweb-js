@@ -529,7 +529,7 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 								}
 							}
 						} else {
-							if (_this8.roomdetails[user.room.name][key]) {
+							if (_this8.roomdetails[user.room.name] && _this8.roomdetails[user.room.name][key]) {
 								// user hasn't moved
 							} else {
 								// eradicate all of this user

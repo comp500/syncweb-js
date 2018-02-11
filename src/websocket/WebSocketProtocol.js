@@ -115,7 +115,7 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 							}
 						}
 					} else {
-						if (this.roomdetails[user.room.name][key]) {
+						if (this.roomdetails[user.room.name] && this.roomdetails[user.room.name][key]) {
 							// user hasn't moved
 						} else {
 							// eradicate all of this user
