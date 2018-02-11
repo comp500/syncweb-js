@@ -50,6 +50,8 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 		if (command == "unpause") {
 			this.paused = false;
 			if (!this.isReady) {
+				// potential problem: unpause is sent from video.play()
+				// could result in unintentional ready setting
 				this.isReady = true;
 				this.sendReady();
 			}
