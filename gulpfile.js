@@ -38,3 +38,7 @@ gulp.task("minified", function () {
 		.pipe(sourcemaps.write("."))
 		.pipe(gulp.dest("dist"));
 });
+
+gulp.task("watch", function () {
+	gulp.watch("src/**/*", ["default"]);
+});

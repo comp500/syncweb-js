@@ -432,6 +432,8 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 			if (_command == "unpause") {
 				this.paused = false;
 				if (!this.isReady) {
+					// potential problem: unpause is sent from video.play()
+					// could result in unintentional ready setting
 					this.isReady = true;
 					this.sendReady();
 				}
@@ -541,6 +543,7 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 			output.State.ping.clientRtt = this.clientRtt;
 
 			if (this.stateChanged) {
+				// TODO update this properly
 				this.clientIgnoringOnTheFly += 1;
 			}
 

@@ -159,7 +159,7 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 		output.State.ping.clientLatencyCalculation = Date.now() / 1000;
 		output.State.ping.clientRtt = this.clientRtt;
 
-		if (this.stateChanged) {
+		if (this.stateChanged) { // TODO update this properly
 			this.clientIgnoringOnTheFly += 1;
 		}
 
