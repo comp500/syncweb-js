@@ -13,6 +13,7 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 		this.socket.addEventListener("open", () => {
 			callback();
 			this.sendHello("comp500", "test");
+			this.sendReady(false);
 		});
 
 		this.socket.addEventListener("message", (e) => {
@@ -211,7 +212,7 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 
 	sendFile(duration, name) {
 		// TODO size attribute for non-html5 video players?
-		let file = {duration, name, size: 1};
+		let file = {duration, name, size: 0};
 		this.command("send", {
 			"Set": {
 				file

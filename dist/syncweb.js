@@ -394,6 +394,7 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 			this.socket.addEventListener("open", function () {
 				callback();
 				_this6.sendHello("comp500", "test");
+				_this6.sendReady(false);
 			});
 
 			this.socket.addEventListener("message", function (e) {
@@ -598,7 +599,7 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 		key: "sendFile",
 		value: function sendFile(duration, name) {
 			// TODO size attribute for non-html5 video players?
-			var file = { duration: duration, name: name, size: 1 };
+			var file = { duration: duration, name: name, size: 0 };
 			this.command("send", {
 				"Set": {
 					file: file
