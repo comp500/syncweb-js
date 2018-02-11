@@ -27,35 +27,36 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 		});
 	}
 
-	command(command, data) {
-		console.log("command: ", command, data); // eslint-disable-line no-console
-		if (command == "send") {
-			this.socket.send(JSON.stringify(data));
-		}
-		if (command == "setmeta") {
-			this.sendFile(data.duration, data.name);
-		}
-		if (command == "settime") {
-			this.currentPosition = data;
-		}
-		if (command == "seek") {
-			this.currentPosition = data;
-			this.doSeek = true;
-			this.sendState();
-		}
-		if (command == "pause") {
-			this.paused = true;
-			this.sendState();
-		}
-		if (command == "unpause") {
-			this.paused = false;
-			if (!this.isReady) {
-				// potential problem: unpause is sent from video.play()
-				// could result in unintentional ready setting
-				this.isReady = true;
-				this.sendReady();
-			}
-			this.sendState();
+	event(event, data) {
+		console.log("event: ", event, data); // eslint-disable-line no-console
+		switch (event) {
+			case "send":
+				this.socket.send(JSON.stringify(data));
+				break;
+			case "setmeta":
+				this.sendFile(data.duration, data.name);
+				break;
+			case "settime":
+				this.currentPosition = data;
+				break;
+			case "seek":
+				this.currentPosition = data;
+				this.doSeek = true;
+				this.sendState();
+				break;
+			case "pause":
+				this.paused = true;
+				this.sendState();
+				break;
+			case "unpause":
+				this.paused = false;
+				if (!this.isReady) {
+					// potential problem: unpause is sent from video.play()
+					// could result in unintentional ready setting
+					this.isReady = true;
+					this.sendReady();
+				}
+				this.sendState();
 		}
 	}
 
@@ -176,7 +177,7 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 
 		console.log(output); // eslint-disable-line no-console
 
-		this.command("send", output);
+		this.event("send", output);
 	}
 
 	sendHello(username, room, password) {
@@ -197,11 +198,11 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 			packet.Hello.password = password;
 		}
 
-		this.command("send", packet);
+		this.event("send", packet);
 	}
 
 	sendListRequest() {
-		this.command("send", {"List": null});
+		this.event("send", {"List": null});
 	}
 
 	sendReady() {
@@ -214,13 +215,13 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 				}
 			}
 		};
-		this.command("send", packet);
+		this.event("send", packet);
 	}
 
 	sendFile(duration, name) {
 		// TODO size attribute for non-html5 video players?
 		let file = {duration, name, size: 0};
-		this.command("send", {
+		this.event("send", {
 			"Set": {
 				file
 			}

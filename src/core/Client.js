@@ -28,6 +28,7 @@ class Client extends EventEmitter {
 
 	addProtocol(protocol) {
 		this.protocolList.push(protocol);
+		protocol.initialise(this);
 	}
 
 	getProtocol(protocol) {
@@ -52,6 +53,7 @@ class Client extends EventEmitter {
 
 	addPlayer(player) {
 		this.playerList.push(player);
+		player.initialise(this);
 	}
 
 	getPlayer(player) {
@@ -76,6 +78,7 @@ class Client extends EventEmitter {
 
 	addPlayerProxy(playerProxy) {
 		this.playerProxyList.push(playerProxy);
+		playerProxy.initialise(this);
 	}
 
 	getPlayerProxy(playerProxy) {
@@ -132,35 +135,20 @@ class Client extends EventEmitter {
 	// events relay status, such as "connected", "connecting" etc.
 	proxyEvents(event, data) {
 		for (let i = 0; i < this.playerProxyList.length; i++) {
-			this.playerProxyList[i].on(event, data);
+			this.playerProxyList[i].event(event, data);
 		}
 		if (this.currentPlayer) {
-			// players must not respond to seturl
-			this.currentPlayer.on(event, data);
-		}
-	}
-
-	// commands relay information about change of state, e.g. protocol tells player to pause
-	proxyCommand(command, data) {
-		if (this.currentPlayer) {
-			for (let i = 0; i < this.playerProxyList.length; i++) {
-				this.playerProxyList[i].command(command, data);
-			}
-			this.currentPlayer.command(command, data);
-		} else {
-			// TODO: maybe error if problematic?
+			// players must not respond to seturl??
+			this.currentPlayer.event(event, data);
 		}
 	}
 
-	proxyCommandToProtocol(command, data) {
-		// TODO: Should players emit (and have proxied) events?
-		if (this.currentPlayer) {
-			for (let i = 0; i < this.playerProxyList.length; i++) {
-				this.playerProxyList[i].command(command, data);
-			}
-			this.currentProtocol.command(command, data);
-		} else {
-			// TODO: maybe error if problematic?
+	proxyEventsToProtocol(event, data) {
+		for (let i = 0; i < this.playerProxyList.length; i++) {
+			this.playerProxyList[i].event(event, data);
+		}
+		if (this.currentProtocol) {
+			this.currentProtocol.event(event, data);
 		}
 	}
 
@@ -170,7 +158,7 @@ class Client extends EventEmitter {
 			//       and yt player coexist? how do
 			//       we choose which to use?
 			if (this.currentPlayer.supports(url)) {
-				this.proxyCommand("seturl", url);
+				this.proxyEvents("seturl", url);
 				return;
 			}
 		}
@@ -180,9 +168,10 @@ class Client extends EventEmitter {
 		});
 		if (foundPlayer) {
 			// if player is found, switch to it
-			if (this.currentPlayer) this.currentPlayer.command("terminate");
+			if (this.currentPlayer) this.currentPlayer.event("terminate");
 			this.currentPlayer = foundPlayer;
-			this.proxyCommand("seturl", url);
+			this.currentPlayer.any(this.proxyEventsToProtocol.bind(this));
+			this.proxyEvents("seturl", url);
 		} else {
 			// TODO: handle no players to play url
 			//       catch-all player?
