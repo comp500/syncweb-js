@@ -124,24 +124,59 @@ var Protocol = function (_EventEmitter) {
 		return _this2;
 	}
 
+	_createClass(Protocol, [{
+		key: "initialise",
+		value: function initialise(client) {
+			this.client = client;
+		}
+	}]);
+
 	return Protocol;
 }(EventEmitter);
 
 SyncWeb.Protocol = Protocol;
+/* global EventEmitter */
 
-var Player = function Player(name) {
-	_classCallCheck(this, Player);
+var Player = function (_EventEmitter2) {
+	_inherits(Player, _EventEmitter2);
 
-	this.name = name;
-};
+	function Player(name) {
+		_classCallCheck(this, Player);
+
+		var _this3 = _possibleConstructorReturn(this, (Player.__proto__ || Object.getPrototypeOf(Player)).call(this));
+
+		_this3.name = name;
+		return _this3;
+	}
+
+	_createClass(Player, [{
+		key: "initialise",
+		value: function initialise(client) {
+			this.client = client;
+		}
+	}]);
+
+	return Player;
+}(EventEmitter);
 
 SyncWeb.Player = Player;
 
-var PlayerProxy = function PlayerProxy(name) {
-	_classCallCheck(this, PlayerProxy);
+var PlayerProxy = function () {
+	function PlayerProxy(name) {
+		_classCallCheck(this, PlayerProxy);
 
-	this.name = name;
-};
+		this.name = name;
+	}
+
+	_createClass(PlayerProxy, [{
+		key: "initialise",
+		value: function initialise(client) {
+			this.client = client;
+		}
+	}]);
+
+	return PlayerProxy;
+}();
 
 SyncWeb.PlayerProxy = PlayerProxy;
 /* global EventEmitter, ArrayHandlers */
@@ -150,30 +185,39 @@ var staticProtocolList = [];
 var staticPlayerProxyList = [];
 var staticPlayerList = [];
 
-var Client = function (_EventEmitter2) {
-	_inherits(Client, _EventEmitter2);
+var Client = function (_EventEmitter3) {
+	_inherits(Client, _EventEmitter3);
 
 	function Client(playerElement) {
 		_classCallCheck(this, Client);
 
-		var _this3 = _possibleConstructorReturn(this, (Client.__proto__ || Object.getPrototypeOf(Client)).call(this));
+		var _this4 = _possibleConstructorReturn(this, (Client.__proto__ || Object.getPrototypeOf(Client)).call(this));
 
-		_this3.protocolList = staticProtocolList;
-		_this3.playerList = staticPlayerList;
-		_this3.playerProxyList = staticPlayerProxyList;
-		_this3.state = 0;
-		_this3.playerElement = playerElement;
+		_this4.protocolList = staticProtocolList;
+		_this4.playerList = staticPlayerList;
+		_this4.playerProxyList = staticPlayerProxyList;
+		_this4.state = 0;
+		_this4.playerElement = playerElement;
 
-		_this3.playerList.forEach(function (player) {
-			player.initialise(_this3);
+		_this4.playerList.forEach(function (player) {
+			player.initialise(_this4);
 		});
-		return _this3;
+
+		_this4.playerProxyList.forEach(function (playerProxy) {
+			playerProxy.initialise(_this4);
+		});
+
+		_this4.protocolList.forEach(function (protocol) {
+			protocol.initialise(_this4);
+		});
+		return _this4;
 	}
 
 	_createClass(Client, [{
 		key: "addProtocol",
 		value: function addProtocol(protocol) {
 			this.protocolList.push(protocol);
+			protocol.initialise(this);
 		}
 	}, {
 		key: "getProtocol",
@@ -189,6 +233,7 @@ var Client = function (_EventEmitter2) {
 		key: "addPlayer",
 		value: function addPlayer(player) {
 			this.playerList.push(player);
+			player.initialise(this);
 		}
 	}, {
 		key: "getPlayer",
@@ -204,6 +249,7 @@ var Client = function (_EventEmitter2) {
 		key: "addPlayerProxy",
 		value: function addPlayerProxy(playerProxy) {
 			this.playerProxyList.push(playerProxy);
+			playerProxy.initialise(this);
 		}
 	}, {
 		key: "getPlayerProxy",
@@ -218,7 +264,7 @@ var Client = function (_EventEmitter2) {
 	}, {
 		key: "connect",
 		value: function connect(protocol, options) {
-			var _this4 = this;
+			var _this5 = this;
 
 			if (this.state != 0) {
 				// TODO: general error handler instead of throwing errors?
@@ -236,17 +282,17 @@ var Client = function (_EventEmitter2) {
 			this.proxyEvents("connecting", protocol);
 			fetchedProtocol.any(this.proxyEvents.bind(this));
 			fetchedProtocol.on("seturl", function (event, url) {
-				_this4.setURL(url);
+				_this5.setURL(url);
 			});
 
 			// TODO: implement some sort of log system, for errors, connection progress etc.
 
 			fetchedProtocol.connect(options, function () {
-				if (_this4.state != 1) {
+				if (_this5.state != 1) {
 					return; // ignore event if not in connecting state
 				}
-				_this4.state = 2;
-				_this4.proxyEvents("connected");
+				_this5.state = 2;
+				_this5.proxyEvents("connected");
 			});
 		}
 
@@ -256,39 +302,21 @@ var Client = function (_EventEmitter2) {
 		key: "proxyEvents",
 		value: function proxyEvents(event, data) {
 			for (var i = 0; i < this.playerProxyList.length; i++) {
-				this.playerProxyList[i].on(event, data);
+				this.playerProxyList[i].event(event, data);
 			}
 			if (this.currentPlayer) {
-				// players must not respond to seturl
-				this.currentPlayer.on(event, data);
-			}
-		}
-
-		// commands relay information about change of state, e.g. protocol tells player to pause
-
-	}, {
-		key: "proxyCommand",
-		value: function proxyCommand(command, data) {
-			if (this.currentPlayer) {
-				for (var i = 0; i < this.playerProxyList.length; i++) {
-					this.playerProxyList[i].command(command, data);
-				}
-				this.currentPlayer.command(command, data);
-			} else {
-				// TODO: maybe error if problematic?
+				// players must not respond to seturl??
+				this.currentPlayer.event(event, data);
 			}
 		}
 	}, {
-		key: "proxyCommandToProtocol",
-		value: function proxyCommandToProtocol(command, data) {
-			// TODO: Should players emit (and have proxied) events?
-			if (this.currentPlayer) {
-				for (var i = 0; i < this.playerProxyList.length; i++) {
-					this.playerProxyList[i].command(command, data);
-				}
-				this.currentProtocol.command(command, data);
-			} else {
-				// TODO: maybe error if problematic?
+		key: "proxyEventsToProtocol",
+		value: function proxyEventsToProtocol(event, data) {
+			for (var i = 0; i < this.playerProxyList.length; i++) {
+				this.playerProxyList[i].event(event, data);
+			}
+			if (this.currentProtocol) {
+				this.currentProtocol.event(event, data);
 			}
 		}
 	}, {
@@ -299,7 +327,7 @@ var Client = function (_EventEmitter2) {
 				//       and yt player coexist? how do
 				//       we choose which to use?
 				if (this.currentPlayer.supports(url)) {
-					this.proxyCommand("seturl", url);
+					this.proxyEvents("seturl", url);
 					return;
 				}
 			}
@@ -309,9 +337,10 @@ var Client = function (_EventEmitter2) {
 			});
 			if (foundPlayer) {
 				// if player is found, switch to it
-				if (this.currentPlayer) this.currentPlayer.command("terminate");
+				if (this.currentPlayer) this.currentPlayer.event("terminate");
 				this.currentPlayer = foundPlayer;
-				this.proxyCommand("seturl", url);
+				this.currentPlayer.any(this.proxyEventsToProtocol.bind(this));
+				this.proxyEvents("seturl", url);
 			} else {
 				// TODO: handle no players to play url
 				//       catch-all player?
@@ -376,68 +405,69 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 	function WebSocketProtocol() {
 		_classCallCheck(this, WebSocketProtocol);
 
-		var _this5 = _possibleConstructorReturn(this, (WebSocketProtocol.__proto__ || Object.getPrototypeOf(WebSocketProtocol)).call(this, "WebSocket-builtin"));
+		var _this6 = _possibleConstructorReturn(this, (WebSocketProtocol.__proto__ || Object.getPrototypeOf(WebSocketProtocol)).call(this, "WebSocket-builtin"));
 
-		_this5.currentPosition = 0.0;
-		_this5.paused = true;
-		_this5.doSeek = false;
-		_this5.isReady = false;
-		return _this5;
+		_this6.currentPosition = 0.0;
+		_this6.paused = true;
+		_this6.doSeek = false;
+		_this6.isReady = false;
+		return _this6;
 	}
 
 	_createClass(WebSocketProtocol, [{
 		key: "connect",
 		value: function connect(options, callback) {
-			var _this6 = this;
+			var _this7 = this;
 
 			this.socket = new WebSocket(options.url);
 
 			this.socket.addEventListener("open", function () {
 				callback();
-				_this6.sendHello("comp500", "test");
-				_this6.sendReady();
+				_this7.sendHello("comp500", "test");
+				_this7.sendReady();
 			});
 
 			this.socket.addEventListener("message", function (e) {
-				_this6.emit("message", e.data);
+				_this7.emit("message", e.data);
 				e.data.split("\n").forEach(function (messageText) {
 					if (messageText == null) return;
 					if (messageText.length < 1) return;
-					_this6.parseMessage(messageText);
+					_this7.parseMessage(messageText);
 				});
 			});
 		}
 	}, {
-		key: "command",
-		value: function command(_command, data) {
-			console.log("command: ", _command, data); // eslint-disable-line no-console
-			if (_command == "send") {
-				this.socket.send(JSON.stringify(data));
-			}
-			if (_command == "setmeta") {
-				this.sendFile(data.duration, data.name);
-			}
-			if (_command == "settime") {
-				this.currentPosition = data;
-			}
-			if (_command == "seek") {
-				this.currentPosition = data;
-				this.doSeek = true;
-				this.sendState();
-			}
-			if (_command == "pause") {
-				this.paused = true;
-				this.sendState();
-			}
-			if (_command == "unpause") {
-				this.paused = false;
-				if (!this.isReady) {
-					// potential problem: unpause is sent from video.play()
-					// could result in unintentional ready setting
-					this.isReady = true;
-					this.sendReady();
-				}
-				this.sendState();
+		key: "event",
+		value: function event(_event, data) {
+			console.log("event: ", _event, data); // eslint-disable-line no-console
+			switch (_event) {
+				case "send":
+					this.socket.send(JSON.stringify(data));
+					break;
+				case "setmeta":
+					this.sendFile(data.duration, data.name);
+					break;
+				case "settime":
+					this.currentPosition = data;
+					break;
+				case "seek":
+					this.currentPosition = data;
+					this.doSeek = true;
+					this.sendState();
+					break;
+				case "pause":
+					this.paused = true;
+					this.sendState();
+					break;
+				case "unpause":
+					this.paused = false;
+					if (!this.isReady) {
+						// potential problem: unpause is sent from video.play()
+						// could result in unintentional ready setting
+						this.isReady = true;
+						this.sendReady();
+					}
+					this.sendState();
 			}
 		}
 	}, {
@@ -560,7 +590,7 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 
 			console.log(output); // eslint-disable-line no-console
 
-			this.command("send", output);
+			this.event("send", output);
 		}
 	}, {
 		key: "sendHello",
@@ -582,12 +612,12 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 				packet.Hello.password = password;
 			}
 
-			this.command("send", packet);
+			this.event("send", packet);
 		}
 	}, {
 		key: "sendListRequest",
 		value: function sendListRequest() {
-			this.command("send", { "List": null });
+			this.event("send", { "List": null });
 		}
 	}, {
 		key: "sendReady",
@@ -601,14 +631,14 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 					}
 				}
 			};
-			this.command("send", packet);
+			this.event("send", packet);
 		}
 	}, {
 		key: "sendFile",
 		value: function sendFile(duration, name) {
 			// TODO size attribute for non-html5 video players?
 			var file = { duration: duration, name: name, size: 0 };
-			this.command("send", {
+			this.event("send", {
 				"Set": {
 					file: file
 				}
