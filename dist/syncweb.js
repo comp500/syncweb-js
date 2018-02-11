@@ -431,8 +431,8 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 			}
 			if (_command == "unpause") {
 				this.paused = false;
-				if (!this.ready) {
-					this.ready = true;
+				if (!this.isReady) {
+					this.isReady = true;
 					this.sendReady();
 				}
 				this.sendState();
