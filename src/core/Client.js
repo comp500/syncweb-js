@@ -16,6 +16,14 @@ class Client extends EventEmitter {
 		this.playerList.forEach((player) => {
 			player.initialise(this);
 		});
+
+		this.playerProxyList.forEach((playerProxy) => {
+			playerProxy.initialise(this);
+		});
+
+		this.protocolList.forEach((protocol) => {
+			protocol.initialise(this);
+		});
 	}
 
 	addProtocol(protocol) {

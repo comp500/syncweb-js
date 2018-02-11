@@ -5,6 +5,10 @@ class Protocol extends EventEmitter {
 		super();
 		this.name = name;
 	}
+
+	initialise(client) {
+		this.client = client;
+	}
 }
 
 SyncWeb.Protocol = Protocol;
