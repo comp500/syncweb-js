@@ -411,6 +411,7 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 		_this6.paused = true;
 		_this6.doSeek = false;
 		_this6.isReady = false;
+		_this6.roomdetails = {};
 		return _this6;
 	}
 
@@ -429,6 +430,7 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 					_this7.sendHello(options.name, options.room);
 				}
 				_this7.sendReady();
+				_this7.sendListRequest();
 			});
 
 			this.socket.addEventListener("message", function (e) {
@@ -477,6 +479,8 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 	}, {
 		key: "parseMessage",
 		value: function parseMessage(message) {
+			var _this8 = this;
+
 			var parsed = JSON.parse(message);
 			console.log("SERVER:", parsed); // eslint-disable-line no-console
 
@@ -504,13 +508,53 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 
 			if (parsed.Set) {
 				console.log("set", parsed.Set); // eslint-disable-line no-console
-				// TODO users, playlists
+				// TODO playlists
+				if (parsed.Set.user) {
+					Object.keys(parsed.Set.user).forEach(function (key) {
+						var user = parsed.Set.user[key];
+						if (user.event) {
+							if (user.event.joined) {
+								_this8.emit("joined", key);
+								if (!_this8.roomdetails[user.room.name]) {
+									_this8.roomdetails[user.room.name] = {};
+								}
+								_this8.roomdetails[user.room.name][key] = {};
+							}
+							if (user.event.left) {
+								_this8.emit("left", key);
+								delete _this8.roomdetails[user.room.name][key];
+								if (Object.keys(_this8.roomdetails[user.room.name]).length == 0) {
+									delete _this8.roomdetails[user.room.name];
+								}
+							}
+						} else {
+							// eradicate all of this user
+							var details = {};
+							Object.keys(_this8.roomdetails).some(function (room) {
+								return Object.keys(_this8.roomdetails[room]).some(function (foundUser) {
+									if (foundUser == key) {
+										details = _this8.roomdetails[room][foundUser];
+										delete _this8.roomdetails[room][foundUser];
+										if (Object.keys(_this8.roomdetails[room]).length == 0) {
+											delete _this8.roomdetails[room];
+										}
+										return true;
+									}
+								});
+							});
+							if (!_this8.roomdetails[user.room.name]) {
+								_this8.roomdetails[user.room.name] = {};
+							}
+							_this8.roomdetails[user.room.name][key] = details;
+							_this8.emit("moved", { "user": key, "room": user.room.name });
+						}
+						_this8.emit("roomdetails", _this8.roomdetails);
+					});
+				}
 			}
 
 			if (parsed.List) {
-				console.log("list", parsed.List); // eslint-disable-line no-console
-				console.log("roomsList", Object.keys(parsed.List)); // eslint-disable-line no-console
-				console.log("userList", Object.keys(parsed.List[this.currentRoom])); // eslint-disable-line no-console
+				this.roomdetails = parsed.List;
 				this.emit("roomdetails", parsed.List);
 			}
 

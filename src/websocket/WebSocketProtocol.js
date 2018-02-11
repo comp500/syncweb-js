@@ -99,19 +99,41 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 			if (parsed.Set.user) {
 				Object.keys(parsed.Set.user).forEach((key) => {
 					let user = parsed.Set.user[key];
-					if (user.event.joined) {
-						this.emit("joined", key);
+					if (user.event) {
+						if (user.event.joined) {
+							this.emit("joined", key);
+							if (!this.roomdetails[user.room.name]) {
+								this.roomdetails[user.room.name] = {};
+							}
+							this.roomdetails[user.room.name][key] = {};
+						}
+						if (user.event.left) {
+							this.emit("left", key);
+							delete this.roomdetails[user.room.name][key];
+							if (Object.keys(this.roomdetails[user.room.name]).length == 0) {
+								delete this.roomdetails[user.room.name];
+							}
+						}
+					} else {
+						// eradicate all of this user
+						let details = {};
+						Object.keys(this.roomdetails).some((room) => {
+							return Object.keys(this.roomdetails[room]).some((foundUser) => {
+								if (foundUser == key) {
+									details = this.roomdetails[room][foundUser];
+									delete this.roomdetails[room][foundUser];
+									if (Object.keys(this.roomdetails[room]).length == 0) {
+										delete this.roomdetails[room];
+									}
+									return true;
+								}
+							});
+						});
 						if (!this.roomdetails[user.room.name]) {
 							this.roomdetails[user.room.name] = {};
 						}
-						this.roomdetails[user.room.name][key] = {};
-					}
-					if (user.event.left) {
-						this.emit("left", key);
-						delete this.roomdetails[user.room.name][key];
-						if (Object.keys(this.roomdetails[user.room.name]).length == 0) {
-							delete this.roomdetails[user.room.name];
-						}
+						this.roomdetails[user.room.name][key] = details;
+						this.emit("moved", {"user": key, "room": user.room.name});
 					}
 					this.emit("roomdetails", this.roomdetails);
 				});
