@@ -147,10 +147,17 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 			}
 
 			if (parsed.Set.ready) {
-				this.roomdetails[parsed.Set.ready.username].isReady = parsed.Set.ready.isReady;
-				this.roomdetails[parsed.Set.ready.username].manuallyInitiated = parsed.Set.ready.manuallyInitiated;
+				Object.keys(this.roomdetails).some((room) => {
+					return Object.keys(this.roomdetails[room]).some((foundUser) => {
+						if (foundUser == parsed.Set.ready.username) {
+							this.roomdetails[room][parsed.Set.ready.username].isReady = parsed.Set.ready.isReady;
+							this.roomdetails[room][parsed.Set.ready.username].manuallyInitiated = parsed.Set.ready.manuallyInitiated;
 
-				this.emit("roomdetails", this.roomdetails);
+							this.emit("roomdetails", this.roomdetails);
+							return true;
+						}
+					});
+				});
 			}
 		}
 

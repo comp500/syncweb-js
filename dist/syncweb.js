@@ -561,10 +561,17 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 				}
 
 				if (parsed.Set.ready) {
-					this.roomdetails[parsed.Set.ready.username].isReady = parsed.Set.ready.isReady;
-					this.roomdetails[parsed.Set.ready.username].manuallyInitiated = parsed.Set.ready.manuallyInitiated;
+					Object.keys(this.roomdetails).some(function (room) {
+						return Object.keys(_this8.roomdetails[room]).some(function (foundUser) {
+							if (foundUser == parsed.Set.ready.username) {
+								_this8.roomdetails[room][parsed.Set.ready.username].isReady = parsed.Set.ready.isReady;
+								_this8.roomdetails[room][parsed.Set.ready.username].manuallyInitiated = parsed.Set.ready.manuallyInitiated;
 
-					this.emit("roomdetails", this.roomdetails);
+								_this8.emit("roomdetails", _this8.roomdetails);
+								return true;
+							}
+						});
+					});
 				}
 			}
 
