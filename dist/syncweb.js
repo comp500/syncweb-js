@@ -47,7 +47,7 @@ var EventEmitter = function () {
 		}
 	}, {
 		key: "emit",
-		value: function emit(name, data) {
+		value: function emit(name) {
 			if (!this.activeEvents) return 0;
 
 			var totalList = void 0;
@@ -61,8 +61,14 @@ var EventEmitter = function () {
 				return 0;
 			}
 
+			for (var _len = arguments.length, data = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+				data[_key - 1] = arguments[_key];
+			}
+
 			for (var i = 0; i < totalList.length; i++) {
-				totalList[i](name, data);
+				var _totalList;
+
+				(_totalList = totalList)[i].apply(_totalList, data);
 			}
 
 			return totalList.length;
@@ -82,6 +88,57 @@ var EventEmitter = function () {
 }();
 
 SyncWeb.util.EventEmitter = EventEmitter;
+
+var PingService = function () {
+	function PingService() {
+		_classCallCheck(this, PingService);
+
+		this.pingMovingAverageWeight = 0.85;
+		this.roundTripTime = 0;
+		this.forwardDelay = 0;
+		this.averageRTT = 0;
+	}
+
+	// Directly ported from python implementation
+
+
+	_createClass(PingService, [{
+		key: "receiveMessage",
+		value: function receiveMessage(timestamp, senderRTT) {
+			if (!timestamp) return;
+
+			this.roundTripTime = Date.now() / 1000 - timestamp;
+
+			if (this.roundTripTime < 0 || senderRTT < 0) return;
+
+			if (!this.averageRTT) {
+				this.averageRTT = this.roundTripTime;
+			}
+			// Add to moving average
+			this.averageRTT = this.averageRTT * this.pingMovingAverageWeight + this.roundTripTime * (1 - this.pingMovingAverageWeight);
+
+			if (senderRTT < this.roundTripTime) {
+				this.forwardDelay = this.averageRTT / 2 + (this.roundTripTime - senderRTT);
+			} else {
+				this.forwardDelay = this.averageRTT / 2;
+			}
+		}
+	}, {
+		key: "getLastForwardDelay",
+		value: function getLastForwardDelay() {
+			return this.forwardDelay;
+		}
+	}, {
+		key: "getRTT",
+		value: function getRTT() {
+			return this.roundTripTime;
+		}
+	}]);
+
+	return PingService;
+}();
+
+SyncWeb.util.PingService = PingService;
 /* global EventEmitter, PingService */
 
 var WebSocketProtocol = function (_EventEmitter) {
@@ -141,6 +198,7 @@ var WebSocketProtocol = function (_EventEmitter) {
 		value: function disconnect() {
 			if (this.socket) {
 				this.socket.close();
+				delete this.socket;
 			}
 		}
 	}, {
@@ -181,12 +239,14 @@ var WebSocketProtocol = function (_EventEmitter) {
 				if (!duration) duration = 0;
 				this.currentFile = { duration: duration, name: name, size: 0 };
 			}
-			this.sendData({
-				"Set": {
-					file: this.currentFile
-				}
-			});
-			this.sendListRequest();
+			if (this.currentFile) {
+				this.sendData({
+					"Set": {
+						file: this.currentFile
+					}
+				});
+				this.sendListRequest();
+			}
 		}
 	}, {
 		key: "sendReady",
@@ -271,18 +331,18 @@ var WebSocketProtocol = function (_EventEmitter) {
 					var user = data.user[key];
 					if (user.event) {
 						if (user.event.joined) {
-							_this4.emit("joined", key);
+							_this4.emit("joined", key, user.room.name);
 							_this4.roomdetails[key] = { room: user.room.name };
 						}
 						if (user.event.left) {
-							_this4.emit("left", key);
+							_this4.emit("left", key, user.room.name);
 							delete _this4.roomdetails[key];
 						}
 					} else {
 						if (_this4.roomdetails[key] && _this4.roomdetails[key].room != user.room.name) {
 							// user has moved
 							_this4.roomdetails[key].room = user.room.name;
-							_this4.emit("moved", { "user": key, "room": user.room.name });
+							_this4.emit("moved", key, user.room.name);
 						}
 					}
 					if (user.file) {
@@ -293,6 +353,9 @@ var WebSocketProtocol = function (_EventEmitter) {
 			}
 
 			if (data.ready) {
+				if (!this.roomdetails[data.ready.username]) {
+					this.roomdetails[data.ready.username] = {};
+				}
 				this.roomdetails[data.ready.username].isReady = data.ready.isReady;
 				this.roomdetails[data.ready.username].manuallyInitiated = data.ready.manuallyInitiated;
 
@@ -328,14 +391,14 @@ var WebSocketProtocol = function (_EventEmitter) {
 			if (data.playstate) {
 				if (data.playstate.setBy && data.playstate.setBy != this.currentUsername) {
 					if (data.playstate.doSeek && !this.doSeek) {
-						this.emit("seek", data.playstate.position);
+						this.emit("seek", data.playstate.position, data.playstate.setBy);
 					}
 					if (this.paused != data.playstate.paused) {
 						if (data.playstate.paused) {
-							this.emit("pause");
+							this.emit("pause", data.playstate.setBy);
 							this.paused = true;
 						} else {
-							this.emit("unpause");
+							this.emit("unpause", data.playstate.setBy);
 							this.paused = false;
 						}
 					}
@@ -364,10 +427,7 @@ var WebSocketProtocol = function (_EventEmitter) {
 	}, {
 		key: "parseChat",
 		value: function parseChat(data) {
-			this.emit("chat", {
-				name: data.username,
-				message: data.message
-			});
+			this.emit("chat", data.username, data.message);
 		}
 	}, {
 		key: "sendState",

@@ -189,6 +189,9 @@ class WebSocketProtocol extends EventEmitter {
 		}
 
 		if (data.ready) {
+			if (!this.roomdetails[data.ready.username]) {
+				this.roomdetails[data.ready.username] = {};
+			} 
 			this.roomdetails[data.ready.username].isReady = data.ready.isReady;
 			this.roomdetails[data.ready.username].manuallyInitiated = data.ready.manuallyInitiated;
 

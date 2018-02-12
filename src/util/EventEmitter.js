@@ -38,7 +38,7 @@ class EventEmitter {
 		}
 
 		for (let i = 0; i < totalList.length; i++) {
-			totalList[i](name, ...data);
+			totalList[i](...data);
 		}
 
 		return totalList.length;
