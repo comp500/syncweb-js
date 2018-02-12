@@ -102,6 +102,8 @@ var WebSocketProtocol = function (_EventEmitter) {
 		return _this2;
 	}
 
+	// Public API
+
 	_createClass(WebSocketProtocol, [{
 		key: "connect",
 		value: function connect(options, callback) {
@@ -133,39 +135,60 @@ var WebSocketProtocol = function (_EventEmitter) {
 			});
 		}
 	}, {
-		key: "event",
-		value: function event(_event, data) {
-			console.log("event: ", _event, data); // eslint-disable-line no-console
-			switch (_event) {
-				case "send":
-					this.socket.send(JSON.stringify(data));
-					break;
-				case "setmeta":
-					this.sendFile(data.duration, data.name);
-					break;
-				case "settime":
-					this.currentPosition = data;
-					break;
-				case "seek":
-					this.currentPosition = data;
-					this.doSeek = true;
-					this.sendState();
-					break;
-				case "pause":
-					this.paused = true;
-					this.sendState();
-					break;
-				case "unpause":
-					this.paused = false;
-					if (!this.isReady) {
-						// potential problem: unpause is sent from video.play()
-						// could result in unintentional ready setting
-						this.isReady = true;
-						this.sendReady();
-					}
-					this.sendState();
+		key: "disconnect",
+		value: function disconnect() {
+			if (this.socket) {
+				this.socket.close();
 			}
 		}
+	}, {
+		key: "sendData",
+		value: function sendData(data) {
+			this.socket.send(JSON.stringify(data));
+		}
+	}, {
+		key: "setTime",
+		value: function setTime(position) {
+			this.currentPosition = position;
+		}
+	}, {
+		key: "seekTo",
+		value: function seekTo(position) {
+			this.setTime(position);
+			this.doSeek = true;
+			this.sendState();
+		}
+	}, {
+		key: "setPause",
+		value: function setPause(pause) {
+			this.paused = pause;
+			if (!pause && !this.isReady) {
+				// potential problem: unpause is sent from video.play()
+				// could result in unintentional ready setting
+				this.isReady = true;
+				this.sendReady();
+			}
+			this.sendState();
+		}
+	}, {
+		key: "sendFile",
+		value: function sendFile(duration, name) {
+			if (name) {
+				// TODO size attribute for non-html5 video players?
+				// 0 means unknown duration
+				if (!duration) duration = 0;
+				this.currentFile = { duration: duration, name: name, size: 0 };
+			}
+			this.sendData({
+				"Set": {
+					file: this.currentFile
+				}
+			});
+			this.sendListRequest();
+		}
+
+		// Private API
+
 	}, {
 		key: "parseMessage",
 		value: function parseMessage(message) {
@@ -321,7 +344,7 @@ var WebSocketProtocol = function (_EventEmitter) {
 
 			console.log(output); // eslint-disable-line no-console
 
-			this.event("send", output);
+			this.sendData(output);
 		}
 	}, {
 		key: "sendHello",
@@ -343,12 +366,12 @@ var WebSocketProtocol = function (_EventEmitter) {
 				packet.Hello.password = password;
 			}
 
-			this.event("send", packet);
+			this.sendData(packet);
 		}
 	}, {
 		key: "sendListRequest",
 		value: function sendListRequest() {
-			this.event("send", { "List": null });
+			this.sendData({ "List": null });
 		}
 	}, {
 		key: "sendReady",
@@ -362,23 +385,7 @@ var WebSocketProtocol = function (_EventEmitter) {
 					}
 				}
 			};
-			this.event("send", packet);
-		}
-	}, {
-		key: "sendFile",
-		value: function sendFile(duration, name) {
-			if (name) {
-				// TODO size attribute for non-html5 video players?
-				// 0 means unknown duration
-				if (!duration) duration = 0;
-				this.currentFile = { duration: duration, name: name, size: 0 };
-			}
-			this.event("send", {
-				"Set": {
-					file: this.currentFile
-				}
-			});
-			this.sendListRequest();
+			this.sendData(packet);
 		}
 	}]);
 

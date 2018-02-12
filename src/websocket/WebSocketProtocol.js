@@ -13,6 +13,8 @@ class WebSocketProtocol extends EventEmitter {
 		this.serverIgnoringOnTheFly = 0;
 	}
 
+	// Public API
+
 	connect(options, callback) {
 		this.socket = new WebSocket(options.url);
 
@@ -40,38 +42,53 @@ class WebSocketProtocol extends EventEmitter {
 		});
 	}
 
-	event(event, data) {
-		console.log("event: ", event, data); // eslint-disable-line no-console
-		switch (event) {
-			case "send":
-				this.socket.send(JSON.stringify(data));
-				break;
-			case "setmeta":
-				this.sendFile(data.duration, data.name);
-				break;
-			case "settime":
-				this.currentPosition = data;
-				break;
-			case "seek":
-				this.currentPosition = data;
-				this.doSeek = true;
-				this.sendState();
-				break;
-			case "pause":
-				this.paused = true;
-				this.sendState();
-				break;
-			case "unpause":
-				this.paused = false;
-				if (!this.isReady) {
-					// potential problem: unpause is sent from video.play()
-					// could result in unintentional ready setting
-					this.isReady = true;
-					this.sendReady();
-				}
-				this.sendState();
+	disconnect() {
+		if (this.socket) {
+			this.socket.close();
 		}
 	}
+
+	sendData(data) {
+		this.socket.send(JSON.stringify(data));
+	}
+
+	setTime(position) {
+		this.currentPosition = position;
+	}
+
+	seekTo(position) {
+		this.setTime(position);
+		this.doSeek = true;
+		this.sendState();
+	}
+
+	setPause(pause) {
+		this.paused = pause;
+		if (!pause && !this.isReady) {
+			// potential problem: unpause is sent from video.play()
+			// could result in unintentional ready setting
+			this.isReady = true;
+			this.sendReady();
+		}
+		this.sendState();
+	}
+
+	sendFile(duration, name) {
+		if (name) {
+			// TODO size attribute for non-html5 video players?
+			// 0 means unknown duration
+			if (!duration) duration = 0;
+			this.currentFile = {duration, name, size: 0};
+		}
+		this.sendData({
+			"Set": {
+				file: this.currentFile
+			}
+		});
+		this.sendListRequest();
+	}
+
+	// Private API
 
 	parseMessage(message) {
 		let parsed = JSON.parse(message);
@@ -223,7 +240,7 @@ class WebSocketProtocol extends EventEmitter {
 
 		console.log(output); // eslint-disable-line no-console
 
-		this.event("send", output);
+		this.sendData(output);
 	}
 
 	sendHello(username, room, password) {
@@ -244,11 +261,11 @@ class WebSocketProtocol extends EventEmitter {
 			packet.Hello.password = password;
 		}
 
-		this.event("send", packet);
+		this.sendData(packet);
 	}
 
 	sendListRequest() {
-		this.event("send", {"List": null});
+		this.sendData({"List": null});
 	}
 
 	sendReady() {
@@ -261,22 +278,7 @@ class WebSocketProtocol extends EventEmitter {
 				}
 			}
 		};
-		this.event("send", packet);
-	}
-
-	sendFile(duration, name) {
-		if (name) {
-			// TODO size attribute for non-html5 video players?
-			// 0 means unknown duration
-			if (!duration) duration = 0;
-			this.currentFile = {duration, name, size: 0};
-		}
-		this.event("send", {
-			"Set": {
-				file: this.currentFile
-			}
-		});
-		this.sendListRequest();
+		this.sendData(packet);
 	}
 }
 
