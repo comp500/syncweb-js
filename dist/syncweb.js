@@ -298,6 +298,9 @@ var WebSocketProtocol = function (_EventEmitter) {
 
 				this.emit("roomdetails", this.roomdetails);
 			}
+
+			// to implement:
+			// room, controllerAuth, newControlledRoom, playlistIndex, playlistChange
 		}
 	}, {
 		key: "parseList",
