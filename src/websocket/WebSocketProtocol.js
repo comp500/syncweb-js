@@ -274,6 +274,7 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 				file: this.currentFile
 			}
 		});
+		this.sendListRequest();
 	}
 }
 
