@@ -12,34 +12,6 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 /* eslint-disable no-unused-vars */
 var SyncWeb = {};
 SyncWeb.util = {};
-var ArrayHandlers = {
-	get: function get(array, content) {
-		if (typeof content == "string") {
-			return array.find(function (itemFound) {
-				return itemFound.name == content;
-			});
-		} else {
-			if (array.includes(content)) {
-				return content;
-			} else {
-				return undefined;
-			}
-		}
-	},
-	remove: function remove(array, content) {
-		var index = void 0;
-		if (typeof content == "string") {
-			index = array.findIndex(function (itemFound) {
-				return itemFound.name == content;
-			});
-		} else {
-			index = array.indexOf(content);
-		}
-		if (index > -1) array.splice(index, 1);
-	}
-};
-
-SyncWeb.util.ArrayHandlers = ArrayHandlers;
 
 var EventEmitter = function () {
 	function EventEmitter() {
@@ -75,7 +47,7 @@ var EventEmitter = function () {
 		}
 	}, {
 		key: "emit",
-		value: function emit(name, data) {
+		value: function emit(name) {
 			if (!this.activeEvents) return 0;
 
 			var totalList = void 0;
@@ -89,8 +61,14 @@ var EventEmitter = function () {
 				return 0;
 			}
 
+			for (var _len = arguments.length, data = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+				data[_key - 1] = arguments[_key];
+			}
+
 			for (var i = 0; i < totalList.length; i++) {
-				totalList[i](name, data);
+				var _totalList;
+
+				(_totalList = totalList)[i].apply(_totalList, data);
 			}
 
 			return totalList.length;
@@ -110,512 +88,348 @@ var EventEmitter = function () {
 }();
 
 SyncWeb.util.EventEmitter = EventEmitter;
-/* global EventEmitter */
 
-var Protocol = function (_EventEmitter) {
-	_inherits(Protocol, _EventEmitter);
+var PingService = function () {
+	function PingService() {
+		_classCallCheck(this, PingService);
 
-	function Protocol(name) {
-		_classCallCheck(this, Protocol);
-
-		var _this2 = _possibleConstructorReturn(this, (Protocol.__proto__ || Object.getPrototypeOf(Protocol)).call(this));
-
-		_this2.name = name;
-		return _this2;
+		this.pingMovingAverageWeight = 0.85;
+		this.roundTripTime = 0;
+		this.forwardDelay = 0;
+		this.averageRTT = 0;
 	}
 
-	_createClass(Protocol, [{
-		key: "initialise",
-		value: function initialise(client) {
-			this.client = client;
+	// Directly ported from python implementation
+
+
+	_createClass(PingService, [{
+		key: "receiveMessage",
+		value: function receiveMessage(timestamp, senderRTT) {
+			if (!timestamp) return;
+
+			this.roundTripTime = Date.now() / 1000 - timestamp;
+
+			if (this.roundTripTime < 0 || senderRTT < 0) return;
+
+			if (!this.averageRTT) {
+				this.averageRTT = this.roundTripTime;
+			}
+			// Add to moving average
+			this.averageRTT = this.averageRTT * this.pingMovingAverageWeight + this.roundTripTime * (1 - this.pingMovingAverageWeight);
+
+			if (senderRTT < this.roundTripTime) {
+				this.forwardDelay = this.averageRTT / 2 + (this.roundTripTime - senderRTT);
+			} else {
+				this.forwardDelay = this.averageRTT / 2;
+			}
+		}
+	}, {
+		key: "getLastForwardDelay",
+		value: function getLastForwardDelay() {
+			return this.forwardDelay;
+		}
+	}, {
+		key: "getRTT",
+		value: function getRTT() {
+			return this.roundTripTime;
 		}
 	}]);
 
-	return Protocol;
-}(EventEmitter);
-
-SyncWeb.Protocol = Protocol;
-/* global EventEmitter */
-
-var Player = function (_EventEmitter2) {
-	_inherits(Player, _EventEmitter2);
-
-	function Player(name) {
-		_classCallCheck(this, Player);
-
-		var _this3 = _possibleConstructorReturn(this, (Player.__proto__ || Object.getPrototypeOf(Player)).call(this));
-
-		_this3.name = name;
-		return _this3;
-	}
-
-	_createClass(Player, [{
-		key: "initialise",
-		value: function initialise(client) {
-			this.client = client;
-		}
-	}]);
-
-	return Player;
-}(EventEmitter);
-
-SyncWeb.Player = Player;
-
-var PlayerProxy = function () {
-	function PlayerProxy(name) {
-		_classCallCheck(this, PlayerProxy);
-
-		this.name = name;
-	}
-
-	_createClass(PlayerProxy, [{
-		key: "initialise",
-		value: function initialise(client) {
-			this.client = client;
-		}
-	}]);
-
-	return PlayerProxy;
+	return PingService;
 }();
 
-SyncWeb.PlayerProxy = PlayerProxy;
-/* global EventEmitter, ArrayHandlers */
+SyncWeb.util.PingService = PingService;
+/* global EventEmitter, PingService */
 
-var staticProtocolList = [];
-var staticPlayerProxyList = [];
-var staticPlayerList = [];
-
-var Client = function (_EventEmitter3) {
-	_inherits(Client, _EventEmitter3);
-
-	function Client(playerElement) {
-		_classCallCheck(this, Client);
-
-		var _this4 = _possibleConstructorReturn(this, (Client.__proto__ || Object.getPrototypeOf(Client)).call(this));
-
-		_this4.protocolList = staticProtocolList;
-		_this4.playerList = staticPlayerList;
-		_this4.playerProxyList = staticPlayerProxyList;
-		_this4.state = 0;
-		_this4.playerElement = playerElement;
-
-		_this4.playerList.forEach(function (player) {
-			player.initialise(_this4);
-		});
-
-		_this4.playerProxyList.forEach(function (playerProxy) {
-			playerProxy.initialise(_this4);
-		});
-
-		_this4.protocolList.forEach(function (protocol) {
-			protocol.initialise(_this4);
-		});
-		return _this4;
-	}
-
-	_createClass(Client, [{
-		key: "addProtocol",
-		value: function addProtocol(protocol) {
-			this.protocolList.push(protocol);
-			protocol.initialise(this);
-		}
-	}, {
-		key: "getProtocol",
-		value: function getProtocol(protocol) {
-			return ArrayHandlers.get(this.protocolList, protocol);
-		}
-	}, {
-		key: "removeProtocol",
-		value: function removeProtocol(protocol) {
-			ArrayHandlers.remove(this.protocolList, protocol);
-		}
-	}, {
-		key: "addPlayer",
-		value: function addPlayer(player) {
-			this.playerList.push(player);
-			player.initialise(this);
-		}
-	}, {
-		key: "getPlayer",
-		value: function getPlayer(player) {
-			return ArrayHandlers.get(this.playerList, player);
-		}
-	}, {
-		key: "removePlayer",
-		value: function removePlayer(player) {
-			ArrayHandlers.remove(this.playerList, player);
-		}
-	}, {
-		key: "addPlayerProxy",
-		value: function addPlayerProxy(playerProxy) {
-			this.playerProxyList.push(playerProxy);
-			playerProxy.initialise(this);
-		}
-	}, {
-		key: "getPlayerProxy",
-		value: function getPlayerProxy(playerProxy) {
-			return ArrayHandlers.get(this.playerProxyList, playerProxy);
-		}
-	}, {
-		key: "removePlayerProxy",
-		value: function removePlayerProxy(playerProxy) {
-			ArrayHandlers.remove(this.playerProxyList, playerProxy);
-		}
-	}, {
-		key: "connect",
-		value: function connect(protocol, options) {
-			var _this5 = this;
-
-			if (this.state != 0) {
-				// TODO: general error handler instead of throwing errors?
-				throw new Error("Client is currently connected, must disconnect first before reconnecting.");
-			}
-
-			var fetchedProtocol = this.getProtocol(protocol);
-			if (fetchedProtocol == undefined || !fetchedProtocol) {
-				throw new Error("No protocol of that name is loaded!");
-			}
-
-			this.currentProtocol = fetchedProtocol;
-			this.state = 1;
-
-			this.proxyEvents("connecting", protocol);
-			fetchedProtocol.any(this.proxyEvents.bind(this));
-			fetchedProtocol.on("seturl", function (event, url) {
-				_this5.setURL(url);
-			});
-
-			// TODO: implement some sort of log system, for errors, connection progress etc.
-
-			fetchedProtocol.connect(options, function () {
-				if (_this5.state != 1) {
-					return; // ignore event if not in connecting state
-				}
-				_this5.state = 2;
-				_this5.proxyEvents("connected");
-			});
-		}
-
-		// events relay status, such as "connected", "connecting" etc.
-
-	}, {
-		key: "proxyEvents",
-		value: function proxyEvents(event, data) {
-			for (var i = 0; i < this.playerProxyList.length; i++) {
-				this.playerProxyList[i].event(event, data);
-			}
-			if (this.currentPlayer) {
-				// players must not respond to seturl??
-				this.currentPlayer.event(event, data);
-			}
-		}
-	}, {
-		key: "proxyEventsToProtocol",
-		value: function proxyEventsToProtocol(event, data) {
-			for (var i = 0; i < this.playerProxyList.length; i++) {
-				this.playerProxyList[i].event(event, data);
-			}
-			if (this.currentProtocol) {
-				this.currentProtocol.event(event, data);
-			}
-		}
-	}, {
-		key: "setURL",
-		value: function setURL(url) {
-			// TODO: don't allow if not connected
-			if (this.currentPlayer) {
-				// TODO: what happens when a http player
-				//       and yt player coexist? how do
-				//       we choose which to use?
-				if (this.currentPlayer.supports(url)) {
-					this.proxyEvents("seturl", url);
-					return;
-				}
-			}
-
-			var foundPlayer = this.playerList.find(function (player) {
-				return player.supports(url);
-			});
-			if (foundPlayer) {
-				// if player is found, switch to it
-				if (this.currentPlayer) this.currentPlayer.event("terminate");
-				this.currentPlayer = foundPlayer;
-				this.currentPlayer.any(this.proxyEventsToProtocol.bind(this));
-				this.proxyEvents("seturl", url);
-			} else {
-				// TODO: handle no players to play url
-				//       catch-all player?
-				throw new Error("No players to handle URL available");
-			}
-		}
-	}], [{
-		key: "addStaticProtocol",
-		value: function addStaticProtocol(protocol) {
-			staticProtocolList.push(protocol);
-		}
-	}, {
-		key: "getStaticProtocol",
-		value: function getStaticProtocol(protocol) {
-			return ArrayHandlers.get(staticProtocolList, protocol);
-		}
-	}, {
-		key: "removeStaticProtocol",
-		value: function removeStaticProtocol(protocol) {
-			ArrayHandlers.remove(staticProtocolList, protocol);
-		}
-	}, {
-		key: "addStaticPlayer",
-		value: function addStaticPlayer(player) {
-			staticPlayerList.push(player);
-		}
-	}, {
-		key: "getStaticPlayer",
-		value: function getStaticPlayer(player) {
-			return ArrayHandlers.get(staticPlayerList, player);
-		}
-	}, {
-		key: "removeStaticPlayer",
-		value: function removeStaticPlayer(player) {
-			ArrayHandlers.remove(staticPlayerList, player);
-		}
-	}, {
-		key: "addStaticPlayerProxy",
-		value: function addStaticPlayerProxy(playerProxy) {
-			staticPlayerProxyList.push(playerProxy);
-		}
-	}, {
-		key: "getStaticPlayerProxy",
-		value: function getStaticPlayerProxy(playerProxy) {
-			return ArrayHandlers.get(staticPlayerProxyList, playerProxy);
-		}
-	}, {
-		key: "removeStaticPlayerProxy",
-		value: function removeStaticPlayerProxy(playerProxy) {
-			ArrayHandlers.remove(staticPlayerProxyList, playerProxy);
-		}
-	}]);
-
-	return Client;
-}(EventEmitter);
-
-SyncWeb.Client = Client;
-
-var WebSocketProtocol = function (_SyncWeb$Protocol) {
-	_inherits(WebSocketProtocol, _SyncWeb$Protocol);
+var WebSocketProtocol = function (_EventEmitter) {
+	_inherits(WebSocketProtocol, _EventEmitter);
 
 	function WebSocketProtocol() {
 		_classCallCheck(this, WebSocketProtocol);
 
-		var _this6 = _possibleConstructorReturn(this, (WebSocketProtocol.__proto__ || Object.getPrototypeOf(WebSocketProtocol)).call(this, "WebSocket-builtin"));
+		var _this2 = _possibleConstructorReturn(this, (WebSocketProtocol.__proto__ || Object.getPrototypeOf(WebSocketProtocol)).call(this));
 
-		_this6.currentPosition = 0.0;
-		_this6.paused = true;
-		_this6.doSeek = false;
-		_this6.isReady = false;
-		_this6.roomdetails = {};
-		return _this6;
+		_this2.currentPosition = 0;
+		_this2.paused = true;
+		_this2.doSeek = false;
+		_this2.isReady = false;
+		_this2.roomdetails = {};
+		_this2.clientIgnoringOnTheFly = 0;
+		_this2.serverIgnoringOnTheFly = 0;
+		_this2.pingService = new PingService();
+		_this2.serverPosition = 0;
+		_this2.updateToServer = true;
+		return _this2;
 	}
+
+	// Public API
 
 	_createClass(WebSocketProtocol, [{
 		key: "connect",
 		value: function connect(options, callback) {
-			var _this7 = this;
+			var _this3 = this;
 
 			this.socket = new WebSocket(options.url);
 
 			this.socket.addEventListener("open", function () {
 				callback();
 				if (options.password) {
-					_this7.sendHello(options.name, options.room, options.password);
+					_this3.sendHello(options.name, options.room, options.password);
 				} else {
-					_this7.sendHello(options.name, options.room);
+					_this3.sendHello(options.name, options.room);
 				}
-				_this7.sendReady();
-				_this7.sendListRequest();
+				_this3.sendReady();
+				_this3.sendListRequest();
+				if (_this3.currentFile) {
+					_this3.sendFile();
+				}
 			});
 
 			this.socket.addEventListener("message", function (e) {
-				_this7.emit("message", e.data);
+				_this3.emit("message", e.data);
 				e.data.split("\n").forEach(function (messageText) {
 					if (messageText == null) return;
 					if (messageText.length < 1) return;
-					_this7.parseMessage(messageText);
+					_this3.parseMessage(messageText);
 				});
 			});
 		}
 	}, {
-		key: "event",
-		value: function event(_event, data) {
-			console.log("event: ", _event, data); // eslint-disable-line no-console
-			switch (_event) {
-				case "send":
-					this.socket.send(JSON.stringify(data));
-					break;
-				case "setmeta":
-					this.sendFile(data.duration, data.name);
-					break;
-				case "settime":
-					this.currentPosition = data;
-					break;
-				case "seek":
-					this.currentPosition = data;
-					this.doSeek = true;
-					this.sendState();
-					break;
-				case "pause":
-					this.paused = true;
-					this.sendState();
-					break;
-				case "unpause":
-					this.paused = false;
-					if (!this.isReady) {
-						// potential problem: unpause is sent from video.play()
-						// could result in unintentional ready setting
-						this.isReady = true;
-						this.sendReady();
-					}
-					this.sendState();
+		key: "disconnect",
+		value: function disconnect() {
+			if (this.socket) {
+				this.socket.close();
+				delete this.socket;
 			}
 		}
 	}, {
+		key: "sendData",
+		value: function sendData(data) {
+			this.socket.send(JSON.stringify(data));
+		}
+	}, {
+		key: "setTime",
+		value: function setTime(position) {
+			this.currentPosition = position;
+		}
+	}, {
+		key: "seekTo",
+		value: function seekTo(position) {
+			this.setTime(position);
+			this.doSeek = true;
+			this.sendState();
+		}
+	}, {
+		key: "setPause",
+		value: function setPause(pause) {
+			this.paused = pause;
+			if (!pause && !this.isReady) {
+				// potential problem: unpause is sent from video.play()
+				// could result in unintentional ready setting
+				this.isReady = true;
+				this.sendReady();
+			}
+			this.sendState();
+		}
+	}, {
+		key: "sendFile",
+		value: function sendFile(duration, name) {
+			if (name) {
+				// TODO size attribute for non-html5 video players?
+				// 0 means unknown duration
+				if (!duration) duration = 0;
+				this.currentFile = { duration: duration, name: name, size: 0 };
+			}
+			if (this.currentFile) {
+				this.sendData({
+					"Set": {
+						file: this.currentFile
+					}
+				});
+				this.sendListRequest();
+			}
+		}
+	}, {
+		key: "sendReady",
+		value: function sendReady(ready) {
+			if (ready == undefined || ready == null) {
+				ready = this.isReady;
+			}
+			var packet = {
+				"Set": {
+					"ready": {
+						isReady: ready,
+						manuallyInitiated: true,
+						username: this.currentUsername
+					}
+				}
+			};
+			this.sendData(packet);
+		}
+
+		// Private API
+
+	}, {
 		key: "parseMessage",
 		value: function parseMessage(message) {
-			var _this8 = this;
-
 			var parsed = JSON.parse(message);
 			console.log("SERVER:", parsed); // eslint-disable-line no-console
 
 			if (parsed.Error) {
-				console.log("err", parsed.Error); // eslint-disable-line no-console
-				// TODO disconnect
+				this.parseError(parsed.Error);
 			}
-
 			if (parsed.Hello) {
-				console.log("hello", parsed.Hello); // eslint-disable-line no-console
-				// TODO handle failed logins, etc.
-				this.serverDetails = {
-					version: parsed.Hello.version,
-					realversion: parsed.Hello.realversion,
-					features: parsed.Hello.features,
-					motd: parsed.Hello.motd
-				};
-				var connectedString = "Connected to server, version " + parsed.Hello.version + ".";
-				if (parsed.Hello.motd) {
-					connectedString += " MOTD:\n\t\t\t\t" + parsed.Hello.motd;
-				}
-				this.emit("connected", connectedString);
-				// roomEventRequest?
+				this.parseHello(parsed.Hello);
 			}
-
 			if (parsed.Set) {
-				console.log("set", parsed.Set); // eslint-disable-line no-console
-				// TODO playlists
-				if (parsed.Set.user) {
-					Object.keys(parsed.Set.user).forEach(function (key) {
-						var user = parsed.Set.user[key];
-						if (user.event) {
-							if (user.event.joined) {
-								_this8.emit("joined", key);
-								if (!_this8.roomdetails[user.room.name]) {
-									_this8.roomdetails[user.room.name] = {};
-								}
-								_this8.roomdetails[user.room.name][key] = {};
-							}
-							if (user.event.left) {
-								_this8.emit("left", key);
-								delete _this8.roomdetails[user.room.name][key];
-								if (Object.keys(_this8.roomdetails[user.room.name]).length == 0) {
-									delete _this8.roomdetails[user.room.name];
-								}
-							}
-						} else {
-							if (_this8.roomdetails[user.room.name] && _this8.roomdetails[user.room.name][key]) {
-								// user hasn't moved
-							} else {
-								// eradicate all of this user
-								var details = {};
-								Object.keys(_this8.roomdetails).some(function (room) {
-									return Object.keys(_this8.roomdetails[room]).some(function (foundUser) {
-										if (foundUser == key) {
-											details = _this8.roomdetails[room][foundUser];
-											delete _this8.roomdetails[room][foundUser];
-											if (Object.keys(_this8.roomdetails[room]).length == 0) {
-												delete _this8.roomdetails[room];
-											}
-											return true;
-										}
-									});
-								});
-								if (!_this8.roomdetails[user.room.name]) {
-									_this8.roomdetails[user.room.name] = {};
-								}
-								_this8.roomdetails[user.room.name][key] = details;
-								_this8.emit("moved", { "user": key, "room": user.room.name });
-							}
-						}
-						if (user.file) {
-							_this8.roomdetails[user.room.name][key].file = user.file;
-						}
-						_this8.emit("roomdetails", _this8.roomdetails);
-					});
-				}
-
-				if (parsed.Set.ready) {
-					Object.keys(this.roomdetails).some(function (room) {
-						return Object.keys(_this8.roomdetails[room]).some(function (foundUser) {
-							if (foundUser == parsed.Set.ready.username) {
-								_this8.roomdetails[room][parsed.Set.ready.username].isReady = parsed.Set.ready.isReady;
-								_this8.roomdetails[room][parsed.Set.ready.username].manuallyInitiated = parsed.Set.ready.manuallyInitiated;
-
-								_this8.emit("roomdetails", _this8.roomdetails);
-								return true;
-							}
-						});
-					});
-				}
+				this.parseSet(parsed.Set);
 			}
-
 			if (parsed.List) {
-				this.roomdetails = parsed.List;
-				this.emit("roomdetails", parsed.List);
+				this.parseList(parsed.List);
 			}
-
 			if (parsed.State) {
-				if (parsed.State.ping.yourLatency != null) {
-					this.clientRtt = parsed.State.ping.yourLatency;
-				}
-				this.latencyCalculation = parsed.State.ping.latencyCalculation;
-				if (parsed.State.ignoringOnTheFly && parsed.State.ignoringOnTheFly.server) {
-					this.serverIgnoringOnTheFly = parsed.State.ignoringOnTheFly.server;
-					this.clientIgnoringOnTheFly = 0;
-					this.stateChanged = false;
-				}
-				if (parsed.State.playstate) {
-					if (parsed.State.playstate.setBy && parsed.State.playstate.setBy != this.currentUsername) {
-						if (parsed.State.playstate.doSeek && !this.doSeek) {
-							this.emit("seek", parsed.State.playstate.position);
-						}
-						if (this.paused != parsed.State.playstate.paused) {
-							if (parsed.State.playstate.paused) {
-								this.emit("pause");
-								this.paused = true;
-							} else {
-								this.emit("unpause");
-								this.paused = false;
-							}
-						}
-					}
-				}
+				this.parseState(parsed.State);
 			}
-
 			if (parsed.Chat) {
-				this.emit("chat", {
-					name: parsed.Chat.username,
-					message: parsed.Chat.message
-				});
+				this.parseChat(parsed.Chat);
 			}
 
 			this.sendState();
+		}
+	}, {
+		key: "parseError",
+		value: function parseError(data) {
+			console.log("err", data); // eslint-disable-line no-console
+			// TODO disconnect
+		}
+	}, {
+		key: "parseHello",
+		value: function parseHello(data) {
+			console.log("hello", data); // eslint-disable-line no-console
+			// TODO handle failed logins, etc.
+			this.serverDetails = {
+				version: data.version,
+				realversion: data.realversion,
+				features: data.features,
+				motd: data.motd
+			};
+			var connectedString = "Connected to server, version " + data.version + ".";
+			if (data.motd) {
+				connectedString += " MOTD:\n\t\t\t" + data.motd;
+			}
+			this.emit("connected", connectedString);
+			// roomEventRequest?
+		}
+	}, {
+		key: "parseSet",
+		value: function parseSet(data) {
+			var _this4 = this;
+
+			console.log("set", data); // eslint-disable-line no-console
+			// TODO playlists
+			if (data.user) {
+				Object.keys(data.user).forEach(function (key) {
+					var user = data.user[key];
+					if (user.event) {
+						if (user.event.joined) {
+							_this4.emit("joined", key, user.room.name);
+							_this4.roomdetails[key] = { room: user.room.name };
+						}
+						if (user.event.left) {
+							_this4.emit("left", key, user.room.name);
+							delete _this4.roomdetails[key];
+						}
+					} else {
+						if (_this4.roomdetails[key] && _this4.roomdetails[key].room != user.room.name) {
+							// user has moved
+							_this4.roomdetails[key].room = user.room.name;
+							_this4.emit("moved", key, user.room.name);
+						}
+					}
+					if (user.file) {
+						_this4.roomdetails[key].file = user.file;
+					}
+					_this4.emit("roomdetails", _this4.roomdetails);
+				});
+			}
+
+			if (data.ready) {
+				if (!this.roomdetails[data.ready.username]) {
+					this.roomdetails[data.ready.username] = {};
+				}
+				this.roomdetails[data.ready.username].isReady = data.ready.isReady;
+				this.roomdetails[data.ready.username].manuallyInitiated = data.ready.manuallyInitiated;
+
+				this.emit("roomdetails", this.roomdetails);
+			}
+
+			// to implement:
+			// room, controllerAuth, newControlledRoom, playlistIndex, playlistChange
+		}
+	}, {
+		key: "parseList",
+		value: function parseList(data) {
+			var _this5 = this;
+
+			this.roomdetails = {};
+			Object.keys(data).forEach(function (room) {
+				Object.keys(data[room]).forEach(function (user) {
+					_this5.roomdetails[user] = data[room][user];
+					_this5.roomdetails[user].room = room;
+				});
+			});
+			this.emit("roomdetails", data);
+		}
+	}, {
+		key: "parseState",
+		value: function parseState(data) {
+			var messageAge = 0;
+			if (data.ignoringOnTheFly && data.ignoringOnTheFly.server) {
+				this.serverIgnoringOnTheFly = data.ignoringOnTheFly.server;
+				this.clientIgnoringOnTheFly = 0;
+				this.stateChanged = false;
+			}
+			if (data.playstate) {
+				if (data.playstate.setBy && data.playstate.setBy != this.currentUsername) {
+					if (this.updateToServer || data.playstate.doSeek && !this.doSeek) {
+						this.emit("seek", data.playstate.position, data.playstate.setBy);
+						this.updateToServer = false;
+					}
+					if (this.paused != data.playstate.paused) {
+						if (data.playstate.paused) {
+							this.emit("pause", data.playstate.setBy);
+							this.paused = true;
+						} else {
+							this.emit("unpause", data.playstate.setBy);
+							this.paused = false;
+						}
+					}
+				}
+				if (data.playstate.position) {
+					this.serverPosition = data.playstate.position;
+				}
+			}
+			if (data.ping) {
+				if (data.ping.latencyCalculation) {
+					this.latencyCalculation = data.ping.latencyCalculation;
+				}
+				if (data.ping.clientLatencyCalculation) {
+					this.pingService.receiveMessage(data.ping.clientLatencyCalculation, data.ping.serverRtt);
+				}
+				messageAge = this.pingService.getLastForwardDelay();
+			}
+
+			// update position due to message delays
+			if (!this.paused) {
+				this.serverPosition += messageAge;
+			}
+
+			// compare server position and client position, ffwd/rewind etc.
+		}
+	}, {
+		key: "parseChat",
+		value: function parseChat(data) {
+			this.emit("chat", data.username, data.message);
 		}
 	}, {
 		key: "sendState",
@@ -635,9 +449,11 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 			}
 
 			output.State.ping = {};
-			output.State.ping.latencyCalculation = this.latencyCalculation;
+			if (this.latencyCalculation) {
+				output.State.ping.latencyCalculation = this.latencyCalculation;
+			}
 			output.State.ping.clientLatencyCalculation = Date.now() / 1000;
-			output.State.ping.clientRtt = this.clientRtt;
+			output.State.ping.clientRtt = this.pingService.getRTT();
 
 			if (this.stateChanged) {
 				// TODO update this properly
@@ -657,7 +473,7 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 
 			console.log(output); // eslint-disable-line no-console
 
-			this.event("send", output);
+			this.sendData(output);
 		}
 	}, {
 		key: "sendHello",
@@ -679,49 +495,19 @@ var WebSocketProtocol = function (_SyncWeb$Protocol) {
 				packet.Hello.password = password;
 			}
 
-			this.event("send", packet);
+			this.sendData(packet);
 		}
 	}, {
 		key: "sendListRequest",
 		value: function sendListRequest() {
-			this.event("send", { "List": null });
-		}
-	}, {
-		key: "sendReady",
-		value: function sendReady() {
-			var packet = {
-				"Set": {
-					"ready": {
-						isReady: this.isReady,
-						manuallyInitiated: true,
-						username: this.currentUsername
-					}
-				}
-			};
-			this.event("send", packet);
-		}
-	}, {
-		key: "sendFile",
-		value: function sendFile(duration, name) {
-			// TODO size attribute for non-html5 video players?
-			// 0 means unknown duration
-			if (!duration) duration = 0;
-			var file = { duration: duration, name: name, size: 0 };
-			this.event("send", {
-				"Set": {
-					file: file
-				}
-			});
+			this.sendData({ "List": null });
 		}
 	}]);
 
 	return WebSocketProtocol;
-}(SyncWeb.Protocol);
+}(EventEmitter);
 
-// Adds the protocol to SyncWeb statically, so every Client has it
-
-
-SyncWeb.Client.addStaticProtocol(new WebSocketProtocol());
+SyncWeb.Client = WebSocketProtocol;
 window.SyncWeb = SyncWeb;
 }());
 
