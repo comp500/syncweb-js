@@ -186,123 +186,167 @@ var WebSocketProtocol = function (_EventEmitter) {
 			});
 			this.sendListRequest();
 		}
+	}, {
+		key: "sendReady",
+		value: function sendReady(ready) {
+			if (ready == undefined || ready == null) {
+				ready = this.isReady;
+			}
+			var packet = {
+				"Set": {
+					"ready": {
+						isReady: ready,
+						manuallyInitiated: true,
+						username: this.currentUsername
+					}
+				}
+			};
+			this.sendData(packet);
+		}
 
 		// Private API
 
 	}, {
 		key: "parseMessage",
 		value: function parseMessage(message) {
-			var _this4 = this;
-
 			var parsed = JSON.parse(message);
 			console.log("SERVER:", parsed); // eslint-disable-line no-console
 
 			if (parsed.Error) {
-				console.log("err", parsed.Error); // eslint-disable-line no-console
-				// TODO disconnect
+				this.parseError(parsed.Error);
 			}
-
 			if (parsed.Hello) {
-				console.log("hello", parsed.Hello); // eslint-disable-line no-console
-				// TODO handle failed logins, etc.
-				this.serverDetails = {
-					version: parsed.Hello.version,
-					realversion: parsed.Hello.realversion,
-					features: parsed.Hello.features,
-					motd: parsed.Hello.motd
-				};
-				var connectedString = "Connected to server, version " + parsed.Hello.version + ".";
-				if (parsed.Hello.motd) {
-					connectedString += " MOTD:\n\t\t\t\t" + parsed.Hello.motd;
-				}
-				this.emit("connected", connectedString);
-				// roomEventRequest?
+				this.parseHello(parsed.Hello);
 			}
-
 			if (parsed.Set) {
-				console.log("set", parsed.Set); // eslint-disable-line no-console
-				// TODO playlists
-				if (parsed.Set.user) {
-					Object.keys(parsed.Set.user).forEach(function (key) {
-						var user = parsed.Set.user[key];
-						if (user.event) {
-							if (user.event.joined) {
-								_this4.emit("joined", key);
-								_this4.roomdetails[key] = { room: user.room.name };
-							}
-							if (user.event.left) {
-								_this4.emit("left", key);
-								delete _this4.roomdetails[key];
-							}
-						} else {
-							if (_this4.roomdetails[key] && _this4.roomdetails[key].room != user.room.name) {
-								// user has moved
-								_this4.roomdetails[key].room = user.room.name;
-								_this4.emit("moved", { "user": key, "room": user.room.name });
-							}
-						}
-						if (user.file) {
-							_this4.roomdetails[key].file = user.file;
-						}
-						_this4.emit("roomdetails", _this4.roomdetails);
-					});
-				}
-
-				if (parsed.Set.ready) {
-					this.roomdetails[parsed.Set.ready.username].isReady = parsed.Set.ready.isReady;
-					this.roomdetails[parsed.Set.ready.username].manuallyInitiated = parsed.Set.ready.manuallyInitiated;
-
-					this.emit("roomdetails", this.roomdetails);
-				}
+				this.parseSet(parsed.Set);
 			}
-
 			if (parsed.List) {
-				this.roomdetails = {};
-				Object.keys(parsed.List).forEach(function (room) {
-					Object.keys(parsed.List[room]).forEach(function (user) {
-						_this4.roomdetails[user] = parsed.List[room][user];
-						_this4.roomdetails[user].room = room;
-					});
-				});
-				this.emit("roomdetails", parsed.List);
+				this.parseList(parsed.List);
+			}
+			if (parsed.State) {
+				this.parseState(parsed.State);
+			}
+			if (parsed.Chat) {
+				this.parseChat(parsed.Chat);
 			}
 
-			if (parsed.State) {
-				if (parsed.State.ping.yourLatency != null) {
-					this.clientRtt = parsed.State.ping.yourLatency;
-				}
-				this.latencyCalculation = parsed.State.ping.latencyCalculation;
-				if (parsed.State.ignoringOnTheFly && parsed.State.ignoringOnTheFly.server) {
-					this.serverIgnoringOnTheFly = parsed.State.ignoringOnTheFly.server;
-					this.clientIgnoringOnTheFly = 0;
-					this.stateChanged = false;
-				}
-				if (parsed.State.playstate) {
-					if (parsed.State.playstate.setBy && parsed.State.playstate.setBy != this.currentUsername) {
-						if (parsed.State.playstate.doSeek && !this.doSeek) {
-							this.emit("seek", parsed.State.playstate.position);
+			this.sendState();
+		}
+	}, {
+		key: "parseError",
+		value: function parseError(data) {
+			console.log("err", data); // eslint-disable-line no-console
+			// TODO disconnect
+		}
+	}, {
+		key: "parseHello",
+		value: function parseHello(data) {
+			console.log("hello", data); // eslint-disable-line no-console
+			// TODO handle failed logins, etc.
+			this.serverDetails = {
+				version: data.version,
+				realversion: data.realversion,
+				features: data.features,
+				motd: data.motd
+			};
+			var connectedString = "Connected to server, version " + data.version + ".";
+			if (data.motd) {
+				connectedString += " MOTD:\n\t\t\t" + data.motd;
+			}
+			this.emit("connected", connectedString);
+			// roomEventRequest?
+		}
+	}, {
+		key: "parseSet",
+		value: function parseSet(data) {
+			var _this4 = this;
+
+			console.log("set", data); // eslint-disable-line no-console
+			// TODO playlists
+			if (data.user) {
+				Object.keys(data.user).forEach(function (key) {
+					var user = data.user[key];
+					if (user.event) {
+						if (user.event.joined) {
+							_this4.emit("joined", key);
+							_this4.roomdetails[key] = { room: user.room.name };
 						}
-						if (this.paused != parsed.State.playstate.paused) {
-							if (parsed.State.playstate.paused) {
-								this.emit("pause");
-								this.paused = true;
-							} else {
-								this.emit("unpause");
-								this.paused = false;
-							}
+						if (user.event.left) {
+							_this4.emit("left", key);
+							delete _this4.roomdetails[key];
+						}
+					} else {
+						if (_this4.roomdetails[key] && _this4.roomdetails[key].room != user.room.name) {
+							// user has moved
+							_this4.roomdetails[key].room = user.room.name;
+							_this4.emit("moved", { "user": key, "room": user.room.name });
+						}
+					}
+					if (user.file) {
+						_this4.roomdetails[key].file = user.file;
+					}
+					_this4.emit("roomdetails", _this4.roomdetails);
+				});
+			}
+
+			if (data.ready) {
+				this.roomdetails[data.ready.username].isReady = data.ready.isReady;
+				this.roomdetails[data.ready.username].manuallyInitiated = data.ready.manuallyInitiated;
+
+				this.emit("roomdetails", this.roomdetails);
+			}
+		}
+	}, {
+		key: "parseList",
+		value: function parseList(data) {
+			var _this5 = this;
+
+			this.roomdetails = {};
+			Object.keys(data).forEach(function (room) {
+				Object.keys(data[room]).forEach(function (user) {
+					_this5.roomdetails[user] = data[room][user];
+					_this5.roomdetails[user].room = room;
+				});
+			});
+			this.emit("roomdetails", data);
+		}
+	}, {
+		key: "parseState",
+		value: function parseState(data) {
+			if (data.ping.yourLatency != null) {
+				this.clientRtt = data.ping.yourLatency;
+			}
+			this.latencyCalculation = data.ping.latencyCalculation;
+			if (data.ignoringOnTheFly && data.ignoringOnTheFly.server) {
+				this.serverIgnoringOnTheFly = data.ignoringOnTheFly.server;
+				this.clientIgnoringOnTheFly = 0;
+				this.stateChanged = false;
+			}
+			if (data.playstate) {
+				if (data.playstate.setBy && data.playstate.setBy != this.currentUsername) {
+					if (data.playstate.doSeek && !this.doSeek) {
+						this.emit("seek", data.playstate.position);
+					}
+					if (this.paused != data.playstate.paused) {
+						if (data.playstate.paused) {
+							this.emit("pause");
+							this.paused = true;
+						} else {
+							this.emit("unpause");
+							this.paused = false;
 						}
 					}
 				}
 			}
-
-			if (parsed.Chat) {
-				this.emit("chat", {
-					name: parsed.Chat.username,
-					message: parsed.Chat.message
-				});
-			}
-
-			this.sendState();
+		}
+	}, {
+		key: "parseChat",
+		value: function parseChat(data) {
+			this.emit("chat", {
+				name: data.username,
+				message: data.message
+			});
 		}
 	}, {
 		key: "sendState",
@@ -372,20 +416,6 @@ var WebSocketProtocol = function (_EventEmitter) {
 		key: "sendListRequest",
 		value: function sendListRequest() {
 			this.sendData({ "List": null });
-		}
-	}, {
-		key: "sendReady",
-		value: function sendReady() {
-			var packet = {
-				"Set": {
-					"ready": {
-						isReady: this.isReady,
-						manuallyInitiated: true,
-						username: this.currentUsername
-					}
-				}
-			};
-			this.sendData(packet);
 		}
 	}]);
 

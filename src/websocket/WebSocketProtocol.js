@@ -88,6 +88,22 @@ class WebSocketProtocol extends EventEmitter {
 		this.sendListRequest();
 	}
 
+	sendReady(ready) {
+		if (ready == undefined || ready == null) {
+			ready = this.isReady;
+		}
+		let packet = {
+			"Set": {
+				"ready": {
+					isReady: ready,
+					manuallyInitiated: true,
+					username: this.currentUsername
+				}
+			}
+		};
+		this.sendData(packet);
+	}
+
 	// Private API
 
 	parseMessage(message) {
@@ -285,19 +301,6 @@ class WebSocketProtocol extends EventEmitter {
 
 	sendListRequest() {
 		this.sendData({"List": null});
-	}
-
-	sendReady() {
-		let packet = {
-			"Set": {
-				"ready": {
-					isReady: this.isReady,
-					manuallyInitiated: true,
-					username: this.currentUsername
-				}
-			}
-		};
-		this.sendData(packet);
 	}
 }
 
