@@ -1,16 +1,18 @@
-/* global EventEmitter */
+/* global EventEmitter, PingService */
 
 class WebSocketProtocol extends EventEmitter {
 	constructor() {
 		super("WebSocket-builtin");
 
-		this.currentPosition = 0.0;
+		this.currentPosition = 0;
 		this.paused = true;
 		this.doSeek = false;
 		this.isReady = false;
 		this.roomdetails = {};
 		this.clientIgnoringOnTheFly = 0;
 		this.serverIgnoringOnTheFly = 0;
+		this.pingService = new PingService();
+		this.serverPosition = 0;
 	}
 
 	// Public API
@@ -204,10 +206,7 @@ class WebSocketProtocol extends EventEmitter {
 	}
 
 	parseState(data) {
-		if (data.ping.yourLatency != null) {
-			this.clientRtt = data.ping.yourLatency;
-		}
-		this.latencyCalculation = data.ping.latencyCalculation;
+		let messageAge = 0;
 		if (data.ignoringOnTheFly && data.ignoringOnTheFly.server) {
 			this.serverIgnoringOnTheFly = data.ignoringOnTheFly.server;
 			this.clientIgnoringOnTheFly = 0;
@@ -228,7 +227,26 @@ class WebSocketProtocol extends EventEmitter {
 					}
 				}
 			}
+			if (data.playstate.position) {
+				this.serverPosition = data.playstate.position;
+			}
 		}
+		if (data.ping) {
+			if (data.ping.latencyCalculation) {
+				this.latencyCalculation = data.ping.latencyCalculation;
+			}
+			if (data.ping.clientLatencyCalculation) {
+				this.pingService.receiveMessage(data.ping.clientLatencyCalculation, data.ping.serverRtt);
+			}
+			messageAge = this.pingService.getLastForwardDelay();
+		}
+
+		// update position due to message delays
+		if (!this.paused) {
+			this.serverPosition += messageAge;
+		}
+
+		// compare server position and client position, ffwd/rewind etc.
 	}
 
 	parseChat(data) {
@@ -254,9 +272,11 @@ class WebSocketProtocol extends EventEmitter {
 		}
 
 		output.State.ping = {};
-		output.State.ping.latencyCalculation = this.latencyCalculation;
+		if (this.latencyCalculation) {
+			output.State.ping.latencyCalculation = this.latencyCalculation;
+		}
 		output.State.ping.clientLatencyCalculation = Date.now() / 1000;
-		output.State.ping.clientRtt = this.clientRtt;
+		output.State.ping.clientRtt = this.pingService.getRTT();
 
 		if (this.stateChanged) { // TODO update this properly
 			this.clientIgnoringOnTheFly += 1;

@@ -9,6 +9,7 @@ const uglify = require("gulp-uglify");
 const fileList = [
 	"src/index.js",
 	"src/util/EventEmitter.js",
+	"src/util/PingService.js",
 	"src/websocket/WebSocketProtocol.js",
 	"src/export.js"
 ];

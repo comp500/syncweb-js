@@ -82,7 +82,7 @@ var EventEmitter = function () {
 }();
 
 SyncWeb.util.EventEmitter = EventEmitter;
-/* global EventEmitter */
+/* global EventEmitter, PingService */
 
 var WebSocketProtocol = function (_EventEmitter) {
 	_inherits(WebSocketProtocol, _EventEmitter);
@@ -92,13 +92,15 @@ var WebSocketProtocol = function (_EventEmitter) {
 
 		var _this2 = _possibleConstructorReturn(this, (WebSocketProtocol.__proto__ || Object.getPrototypeOf(WebSocketProtocol)).call(this, "WebSocket-builtin"));
 
-		_this2.currentPosition = 0.0;
+		_this2.currentPosition = 0;
 		_this2.paused = true;
 		_this2.doSeek = false;
 		_this2.isReady = false;
 		_this2.roomdetails = {};
 		_this2.clientIgnoringOnTheFly = 0;
 		_this2.serverIgnoringOnTheFly = 0;
+		_this2.pingService = new PingService();
+		_this2.serverPosition = 0;
 		return _this2;
 	}
 
@@ -314,10 +316,7 @@ var WebSocketProtocol = function (_EventEmitter) {
 	}, {
 		key: "parseState",
 		value: function parseState(data) {
-			if (data.ping.yourLatency != null) {
-				this.clientRtt = data.ping.yourLatency;
-			}
-			this.latencyCalculation = data.ping.latencyCalculation;
+			var messageAge = 0;
 			if (data.ignoringOnTheFly && data.ignoringOnTheFly.server) {
 				this.serverIgnoringOnTheFly = data.ignoringOnTheFly.server;
 				this.clientIgnoringOnTheFly = 0;
@@ -338,7 +337,26 @@ var WebSocketProtocol = function (_EventEmitter) {
 						}
 					}
 				}
+				if (data.playstate.position) {
+					this.serverPosition = data.playstate.position;
+				}
 			}
+			if (data.ping) {
+				if (data.ping.latencyCalculation) {
+					this.latencyCalculation = data.ping.latencyCalculation;
+				}
+				if (data.ping.clientLatencyCalculation) {
+					this.pingService.receiveMessage(data.ping.clientLatencyCalculation, data.ping.serverRtt);
+				}
+				messageAge = this.pingService.getLastForwardDelay();
+			}
+
+			// update position due to message delays
+			if (!this.paused) {
+				this.serverPosition += messageAge;
+			}
+
+			// compare server position and client position, ffwd/rewind etc.
 		}
 	}, {
 		key: "parseChat",
@@ -366,9 +384,11 @@ var WebSocketProtocol = function (_EventEmitter) {
 			}
 
 			output.State.ping = {};
-			output.State.ping.latencyCalculation = this.latencyCalculation;
+			if (this.latencyCalculation) {
+				output.State.ping.latencyCalculation = this.latencyCalculation;
+			}
 			output.State.ping.clientLatencyCalculation = Date.now() / 1000;
-			output.State.ping.clientRtt = this.clientRtt;
+			output.State.ping.clientRtt = this.pingService.getRTT();
 
 			if (this.stateChanged) {
 				// TODO update this properly
