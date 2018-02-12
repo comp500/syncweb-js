@@ -1,4 +1,6 @@
-class WebSocketProtocol extends SyncWeb.Protocol {
+/* global EventEmitter */
+
+class WebSocketProtocol extends EventEmitter {
 	constructor() {
 		super("WebSocket-builtin");
 
@@ -278,5 +280,4 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 	}
 }
 
-// Adds the protocol to SyncWeb statically, so every Client has it
-SyncWeb.Client.addStaticProtocol(new WebSocketProtocol());
+SyncWeb.Client = WebSocketProtocol;
