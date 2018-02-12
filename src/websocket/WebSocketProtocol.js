@@ -7,6 +7,8 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 		this.doSeek = false;
 		this.isReady = false;
 		this.roomdetails = {};
+		this.clientIgnoringOnTheFly = 0;
+		this.serverIgnoringOnTheFly = 0;
 	}
 
 	connect(options, callback) {
@@ -21,6 +23,9 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 			}
 			this.sendReady();
 			this.sendListRequest();
+			if (this.currentFile) {
+				this.sendFile();
+			}
 		});
 
 		this.socket.addEventListener("message", (e) => {
@@ -102,67 +107,42 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 					if (user.event) {
 						if (user.event.joined) {
 							this.emit("joined", key);
-							if (!this.roomdetails[user.room.name]) {
-								this.roomdetails[user.room.name] = {};
-							}
-							this.roomdetails[user.room.name][key] = {};
+							this.roomdetails[key] = {room: user.room.name};
 						}
 						if (user.event.left) {
 							this.emit("left", key);
-							delete this.roomdetails[user.room.name][key];
-							if (Object.keys(this.roomdetails[user.room.name]).length == 0) {
-								delete this.roomdetails[user.room.name];
-							}
+							delete this.roomdetails[key];
 						}
 					} else {
-						if (this.roomdetails[user.room.name] && this.roomdetails[user.room.name][key]) {
-							// user hasn't moved
-						} else {
-							// eradicate all of this user
-							let details = {};
-							Object.keys(this.roomdetails).some((room) => {
-								return Object.keys(this.roomdetails[room]).some((foundUser) => {
-									if (foundUser == key) {
-										details = this.roomdetails[room][foundUser];
-										delete this.roomdetails[room][foundUser];
-										if (Object.keys(this.roomdetails[room]).length == 0) {
-											delete this.roomdetails[room];
-										}
-										return true;
-									}
-								});
-							});
-							if (!this.roomdetails[user.room.name]) {
-								this.roomdetails[user.room.name] = {};
-							}
-							this.roomdetails[user.room.name][key] = details;
+						if (this.roomdetails[key] && this.roomdetails[key].room != user.room.name) {
+							// user has moved
+							this.roomdetails[key].room = user.room.name;
 							this.emit("moved", {"user": key, "room": user.room.name});
 						}
 					}
 					if (user.file) {
-						this.roomdetails[user.room.name][key].file = user.file;
+						this.roomdetails[key].file = user.file;
 					}
 					this.emit("roomdetails", this.roomdetails);
 				});
 			}
 
 			if (parsed.Set.ready) {
-				Object.keys(this.roomdetails).some((room) => {
-					return Object.keys(this.roomdetails[room]).some((foundUser) => {
-						if (foundUser == parsed.Set.ready.username) {
-							this.roomdetails[room][parsed.Set.ready.username].isReady = parsed.Set.ready.isReady;
-							this.roomdetails[room][parsed.Set.ready.username].manuallyInitiated = parsed.Set.ready.manuallyInitiated;
+				this.roomdetails[parsed.Set.ready.username].isReady = parsed.Set.ready.isReady;
+				this.roomdetails[parsed.Set.ready.username].manuallyInitiated = parsed.Set.ready.manuallyInitiated;
 
-							this.emit("roomdetails", this.roomdetails);
-							return true;
-						}
-					});
-				});
+				this.emit("roomdetails", this.roomdetails);
 			}
 		}
 
 		if (parsed.List) {
-			this.roomdetails = parsed.List;
+			this.roomdetails = {};
+			Object.keys(parsed.List).forEach((room) => {
+				Object.keys(parsed.List[room]).forEach((user) => {
+					this.roomdetails[user] = parsed.List[room][user];
+					this.roomdetails[user].room = room;
+				});
+			});
 			this.emit("roomdetails", parsed.List);
 		}
 
@@ -283,13 +263,15 @@ class WebSocketProtocol extends SyncWeb.Protocol {
 	}
 
 	sendFile(duration, name) {
-		// TODO size attribute for non-html5 video players?
-		// 0 means unknown duration
-		if (!duration) duration = 0;
-		let file = {duration, name, size: 0};
+		if (name) {
+			// TODO size attribute for non-html5 video players?
+			// 0 means unknown duration
+			if (!duration) duration = 0;
+			this.currentFile = {duration, name, size: 0};
+		}
 		this.event("send", {
 			"Set": {
-				file
+				file: this.currentFile
 			}
 		});
 	}
