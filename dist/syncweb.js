@@ -90,7 +90,7 @@ var WebSocketProtocol = function (_EventEmitter) {
 	function WebSocketProtocol() {
 		_classCallCheck(this, WebSocketProtocol);
 
-		var _this2 = _possibleConstructorReturn(this, (WebSocketProtocol.__proto__ || Object.getPrototypeOf(WebSocketProtocol)).call(this, "WebSocket-builtin"));
+		var _this2 = _possibleConstructorReturn(this, (WebSocketProtocol.__proto__ || Object.getPrototypeOf(WebSocketProtocol)).call(this));
 
 		_this2.currentPosition = 0;
 		_this2.paused = true;

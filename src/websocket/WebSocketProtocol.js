@@ -2,8 +2,7 @@
 
 class WebSocketProtocol extends EventEmitter {
 	constructor() {
-		super("WebSocket-builtin");
-
+		super();
 		this.currentPosition = 0;
 		this.paused = true;
 		this.doSeek = false;
@@ -47,6 +46,7 @@ class WebSocketProtocol extends EventEmitter {
 	disconnect() {
 		if (this.socket) {
 			this.socket.close();
+			delete this.socket;
 		}
 	}
 
