@@ -82,12 +82,14 @@ class WebSocketProtocol extends EventEmitter {
 			if (!duration) duration = 0;
 			this.currentFile = {duration, name, size: 0};
 		}
-		this.sendData({
-			"Set": {
-				file: this.currentFile
-			}
-		});
-		this.sendListRequest();
+		if (this.currentFile) {
+			this.sendData({
+				"Set": {
+					file: this.currentFile
+				}
+			});
+			this.sendListRequest();
+		}
 	}
 
 	sendReady(ready) {
@@ -165,18 +167,18 @@ class WebSocketProtocol extends EventEmitter {
 				let user = data.user[key];
 				if (user.event) {
 					if (user.event.joined) {
-						this.emit("joined", key);
+						this.emit("joined", key, user.room.name);
 						this.roomdetails[key] = {room: user.room.name};
 					}
 					if (user.event.left) {
-						this.emit("left", key);
+						this.emit("left", key, user.room.name);
 						delete this.roomdetails[key];
 					}
 				} else {
 					if (this.roomdetails[key] && this.roomdetails[key].room != user.room.name) {
 						// user has moved
 						this.roomdetails[key].room = user.room.name;
-						this.emit("moved", {"user": key, "room": user.room.name});
+						this.emit("moved", key, user.room.name);
 					}
 				}
 				if (user.file) {
@@ -218,14 +220,14 @@ class WebSocketProtocol extends EventEmitter {
 		if (data.playstate) {
 			if (data.playstate.setBy && data.playstate.setBy != this.currentUsername) {
 				if (data.playstate.doSeek && !this.doSeek) {
-					this.emit("seek", data.playstate.position);
+					this.emit("seek", data.playstate.position, data.playstate.setBy);
 				}
 				if (this.paused != data.playstate.paused) {
 					if (data.playstate.paused) {
-						this.emit("pause");
+						this.emit("pause", data.playstate.setBy);
 						this.paused = true;
 					} else {
-						this.emit("unpause");
+						this.emit("unpause", data.playstate.setBy);
 						this.paused = false;
 					}
 				}
@@ -253,10 +255,7 @@ class WebSocketProtocol extends EventEmitter {
 	}
 
 	parseChat(data) {
-		this.emit("chat", {
-			name: data.username,
-			message: data.message
-		});
+		this.emit("chat", data.username, data.message);
 	}
 
 	sendState() {

@@ -23,7 +23,7 @@ class EventEmitter {
 		this.on("*", callback);
 	}
 
-	emit(name, data) {
+	emit(name, ...data) {
 		if (!this.activeEvents) return 0;
 
 		let totalList;
@@ -38,7 +38,7 @@ class EventEmitter {
 		}
 
 		for (let i = 0; i < totalList.length; i++) {
-			totalList[i](name, data);
+			totalList[i](name, ...data);
 		}
 
 		return totalList.length;
