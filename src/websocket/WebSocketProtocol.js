@@ -12,6 +12,7 @@ class WebSocketProtocol extends EventEmitter {
 		this.serverIgnoringOnTheFly = 0;
 		this.pingService = new PingService();
 		this.serverPosition = 0;
+		this.updateToServer = true;
 	}
 
 	// Public API
@@ -222,8 +223,9 @@ class WebSocketProtocol extends EventEmitter {
 		}
 		if (data.playstate) {
 			if (data.playstate.setBy && data.playstate.setBy != this.currentUsername) {
-				if (data.playstate.doSeek && !this.doSeek) {
+				if (this.updateToServer || (data.playstate.doSeek && !this.doSeek)) {
 					this.emit("seek", data.playstate.position, data.playstate.setBy);
+					this.updateToServer = false;
 				}
 				if (this.paused != data.playstate.paused) {
 					if (data.playstate.paused) {

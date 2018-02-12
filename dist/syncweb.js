@@ -158,6 +158,7 @@ var WebSocketProtocol = function (_EventEmitter) {
 		_this2.serverIgnoringOnTheFly = 0;
 		_this2.pingService = new PingService();
 		_this2.serverPosition = 0;
+		_this2.updateToServer = true;
 		return _this2;
 	}
 
@@ -390,8 +391,9 @@ var WebSocketProtocol = function (_EventEmitter) {
 			}
 			if (data.playstate) {
 				if (data.playstate.setBy && data.playstate.setBy != this.currentUsername) {
-					if (data.playstate.doSeek && !this.doSeek) {
+					if (this.updateToServer || data.playstate.doSeek && !this.doSeek) {
 						this.emit("seek", data.playstate.position, data.playstate.setBy);
+						this.updateToServer = false;
 					}
 					if (this.paused != data.playstate.paused) {
 						if (data.playstate.paused) {
