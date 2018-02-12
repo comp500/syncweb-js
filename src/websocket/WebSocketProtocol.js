@@ -95,112 +95,131 @@ class WebSocketProtocol extends EventEmitter {
 		console.log("SERVER:", parsed); // eslint-disable-line no-console
 
 		if (parsed.Error) {
-			console.log("err", parsed.Error); // eslint-disable-line no-console
-			// TODO disconnect
+			this.parseError(parsed.Error);
 		}
-
 		if (parsed.Hello) {
-			console.log("hello", parsed.Hello); // eslint-disable-line no-console
-			// TODO handle failed logins, etc.
-			this.serverDetails = {
-				version: parsed.Hello.version,
-				realversion: parsed.Hello.realversion,
-				features: parsed.Hello.features,
-				motd: parsed.Hello.motd
-			};
-			let connectedString = `Connected to server, version ${parsed.Hello.version}.`;
-			if (parsed.Hello.motd) {
-				connectedString += ` MOTD:
-				${parsed.Hello.motd}`;
-			}
-			this.emit("connected", connectedString);
-			// roomEventRequest?
+			this.parseHello(parsed.Hello);
 		}
-
 		if (parsed.Set) {
-			console.log("set", parsed.Set); // eslint-disable-line no-console
-			// TODO playlists
-			if (parsed.Set.user) {
-				Object.keys(parsed.Set.user).forEach((key) => {
-					let user = parsed.Set.user[key];
-					if (user.event) {
-						if (user.event.joined) {
-							this.emit("joined", key);
-							this.roomdetails[key] = {room: user.room.name};
-						}
-						if (user.event.left) {
-							this.emit("left", key);
-							delete this.roomdetails[key];
-						}
-					} else {
-						if (this.roomdetails[key] && this.roomdetails[key].room != user.room.name) {
-							// user has moved
-							this.roomdetails[key].room = user.room.name;
-							this.emit("moved", {"user": key, "room": user.room.name});
-						}
-					}
-					if (user.file) {
-						this.roomdetails[key].file = user.file;
-					}
-					this.emit("roomdetails", this.roomdetails);
-				});
-			}
-
-			if (parsed.Set.ready) {
-				this.roomdetails[parsed.Set.ready.username].isReady = parsed.Set.ready.isReady;
-				this.roomdetails[parsed.Set.ready.username].manuallyInitiated = parsed.Set.ready.manuallyInitiated;
-
-				this.emit("roomdetails", this.roomdetails);
-			}
+			this.parseSet(parsed.Set);
 		}
-
 		if (parsed.List) {
-			this.roomdetails = {};
-			Object.keys(parsed.List).forEach((room) => {
-				Object.keys(parsed.List[room]).forEach((user) => {
-					this.roomdetails[user] = parsed.List[room][user];
-					this.roomdetails[user].room = room;
-				});
-			});
-			this.emit("roomdetails", parsed.List);
+			this.parseList(parsed.List);
+		}
+		if (parsed.State) {
+			this.parseState(parsed.State);
+		}
+		if (parsed.Chat) {
+			this.parseChat(parsed.Chat);
 		}
 
-		if (parsed.State) {
-			if (parsed.State.ping.yourLatency != null) {
-				this.clientRtt = parsed.State.ping.yourLatency;
-			}
-			this.latencyCalculation = parsed.State.ping.latencyCalculation;
-			if (parsed.State.ignoringOnTheFly && parsed.State.ignoringOnTheFly.server) {
-				this.serverIgnoringOnTheFly = parsed.State.ignoringOnTheFly.server;
-				this.clientIgnoringOnTheFly = 0;
-				this.stateChanged = false;
-			}
-			if (parsed.State.playstate) {
-				if (parsed.State.playstate.setBy && parsed.State.playstate.setBy != this.currentUsername) {
-					if (parsed.State.playstate.doSeek && !this.doSeek) {
-						this.emit("seek", parsed.State.playstate.position);
+		this.sendState();
+	}
+
+	parseError(data) {
+		console.log("err", data); // eslint-disable-line no-console
+		// TODO disconnect
+	}
+
+	parseHello(data) {
+		console.log("hello", data); // eslint-disable-line no-console
+		// TODO handle failed logins, etc.
+		this.serverDetails = {
+			version: data.version,
+			realversion: data.realversion,
+			features: data.features,
+			motd: data.motd
+		};
+		let connectedString = `Connected to server, version ${data.version}.`;
+		if (data.motd) {
+			connectedString += ` MOTD:
+			${data.motd}`;
+		}
+		this.emit("connected", connectedString);
+		// roomEventRequest?
+	}
+
+	parseSet(data) {
+		console.log("set", data); // eslint-disable-line no-console
+		// TODO playlists
+		if (data.user) {
+			Object.keys(data.user).forEach((key) => {
+				let user = data.user[key];
+				if (user.event) {
+					if (user.event.joined) {
+						this.emit("joined", key);
+						this.roomdetails[key] = {room: user.room.name};
 					}
-					if (this.paused != parsed.State.playstate.paused) {
-						if (parsed.State.playstate.paused) {
-							this.emit("pause");
-							this.paused = true;
-						} else {
-							this.emit("unpause");
-							this.paused = false;
-						}
+					if (user.event.left) {
+						this.emit("left", key);
+						delete this.roomdetails[key];
+					}
+				} else {
+					if (this.roomdetails[key] && this.roomdetails[key].room != user.room.name) {
+						// user has moved
+						this.roomdetails[key].room = user.room.name;
+						this.emit("moved", {"user": key, "room": user.room.name});
+					}
+				}
+				if (user.file) {
+					this.roomdetails[key].file = user.file;
+				}
+				this.emit("roomdetails", this.roomdetails);
+			});
+		}
+
+		if (data.ready) {
+			this.roomdetails[data.ready.username].isReady = data.ready.isReady;
+			this.roomdetails[data.ready.username].manuallyInitiated = data.ready.manuallyInitiated;
+
+			this.emit("roomdetails", this.roomdetails);
+		}
+	}
+
+	parseList(data) {
+		this.roomdetails = {};
+		Object.keys(data).forEach((room) => {
+			Object.keys(data[room]).forEach((user) => {
+				this.roomdetails[user] = data[room][user];
+				this.roomdetails[user].room = room;
+			});
+		});
+		this.emit("roomdetails", data);
+	}
+
+	parseState(data) {
+		if (data.ping.yourLatency != null) {
+			this.clientRtt = data.ping.yourLatency;
+		}
+		this.latencyCalculation = data.ping.latencyCalculation;
+		if (data.ignoringOnTheFly && data.ignoringOnTheFly.server) {
+			this.serverIgnoringOnTheFly = data.ignoringOnTheFly.server;
+			this.clientIgnoringOnTheFly = 0;
+			this.stateChanged = false;
+		}
+		if (data.playstate) {
+			if (data.playstate.setBy && data.playstate.setBy != this.currentUsername) {
+				if (data.playstate.doSeek && !this.doSeek) {
+					this.emit("seek", data.playstate.position);
+				}
+				if (this.paused != data.playstate.paused) {
+					if (data.playstate.paused) {
+						this.emit("pause");
+						this.paused = true;
+					} else {
+						this.emit("unpause");
+						this.paused = false;
 					}
 				}
 			}
 		}
+	}
 
-		if (parsed.Chat) {
-			this.emit("chat", {
-				name: parsed.Chat.username,
-				message: parsed.Chat.message
-			});
-		}
-
-		this.sendState();
+	parseChat(data) {
+		this.emit("chat", {
+			name: data.username,
+			message: data.message
+		});
 	}
 
 	sendState() {
