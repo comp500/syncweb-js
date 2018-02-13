@@ -7,7 +7,7 @@
 		"ecmaVersion": 2017,
 		"sourceType": "script"
 	},
-	"extends": "eslint:recommended",
+	"extends": "@comp500",
 	"globals": {
 		"SyncWeb": true
 	}

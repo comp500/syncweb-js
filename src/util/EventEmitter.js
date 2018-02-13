@@ -13,8 +13,8 @@ class EventEmitter {
 
 	once(name, callback) {
 		let modifiedCallback = (data) => {
-			callback(data);
 			this.removeListener(name, modifiedCallback);
+			callback(data);
 		};
 		this.on(name, modifiedCallback);
 	}
@@ -32,7 +32,7 @@ class EventEmitter {
 		} else if (this.eventList[name]) {
 			totalList = this.eventList[name];
 		} else if (this.eventList["*"]) {
-			totalList = this.eventList["*"]
+			totalList = this.eventList["*"];
 		} else {
 			return 0;
 		}

@@ -21,7 +21,6 @@ class WebSocketProtocol extends EventEmitter {
 		this.socket = new WebSocket(options.url);
 
 		this.socket.addEventListener("open", () => {
-			callback();
 			if (options.password) {
 				this.sendHello(options.name, options.room, options.password);
 			} else {
@@ -32,11 +31,12 @@ class WebSocketProtocol extends EventEmitter {
 			if (this.currentFile) {
 				this.sendFile();
 			}
+			callback();
 		});
 
 		this.socket.addEventListener("message", (e) => {
 			this.emit("message", e.data);
-			e.data.split("\n").forEach(messageText => {
+			e.data.split("\n").forEach((messageText) => {
 				if (messageText == null) return;
 				if (messageText.length < 1) return;
 				this.parseMessage(messageText);
@@ -192,7 +192,7 @@ class WebSocketProtocol extends EventEmitter {
 		if (data.ready) {
 			if (!this.roomdetails[data.ready.username]) {
 				this.roomdetails[data.ready.username] = {};
-			} 
+			}
 			this.roomdetails[data.ready.username].isReady = data.ready.isReady;
 			this.roomdetails[data.ready.username].manuallyInitiated = data.ready.manuallyInitiated;
 
