@@ -1,26 +1,42 @@
-/* global EventEmitter, PingService */
+import WebSocketProtocol from "./WebSocketProtocol";
+import JSONMessageProtocol from "./JSONMessageProtocol";
+import PingService from "../util/PingService";
+import EventTracker from "../util/EventTracker";
 
-class WebSocketProtocol extends EventEmitter {
-	constructor() {
-		super();
-		this.currentPosition = 0;
-		this.paused = true;
-		this.doSeek = false;
-		this.isReady = false;
-		this.roomdetails = {};
-		this.clientIgnoringOnTheFly = 0;
-		this.serverIgnoringOnTheFly = 0;
-		this.pingService = new PingService();
-		this.serverPosition = 0;
-		this.updateToServer = true;
-	}
+export default class SyncplayJSONClient {
+	private transport: JSONMessageProtocol = null;
 
-	// Public API
+	private currentPosition = 0;
+	private paused = true;
+	private doSeek = false;
+	private isReady = false;
+	private roomdetails = {};
+	private clientIgnoringOnTheFly = 0;
+	private serverIgnoringOnTheFly = 0;
+	private pingService = new PingService();
+	private serverPosition = 0;
+	private updateToServer = true;
+	private currentFile: any = null;
+	private currentUsername: string;
+	private serverDetails: any = null;
+	private stateChanged = false;
+	private latencyCalculation: number;
+	private currentRoom: string;
 
-	connect(options, callback) {
-		this.socket = new WebSocket(options.url);
+	readonly connected = new EventTracker<(connectedString: string) => void>();
+	readonly joined = new EventTracker<(userName: string, roomName: string) => void>();
+	readonly left = new EventTracker<(userName: string, roomName: string) => void>();
+	readonly moved = new EventTracker<(userName: string, roomName: string) => void>();
+	readonly roomDetailsUpdated = new EventTracker<(roomDetails: any) => void>();
+	readonly seek = new EventTracker<(position: number, setBy: string) => void>();
+	readonly pause = new EventTracker<(setBy: string) => void>();
+	readonly unpause = new EventTracker<(setBy: string) => void>();
+	readonly chat = new EventTracker<(userName: string, message: string) => void>();
 
-		this.socket.addEventListener("open", () => {
+	connect(options, callback): void {
+		this.transport = new WebSocketProtocol(options.url);
+
+		this.transport.open.subscribe(() => {
 			if (options.password) {
 				this.sendHello(options.name, options.room, options.password);
 			} else {
@@ -34,38 +50,34 @@ class WebSocketProtocol extends EventEmitter {
 			callback();
 		});
 
-		this.socket.addEventListener("message", (e) => {
-			this.emit("message", e.data);
-			e.data.split("\n").forEach((messageText) => {
-				if (messageText == null) return;
-				if (messageText.length < 1) return;
-				this.parseMessage(messageText);
-			});
+		this.transport.message.subscribe((msg) => {
+			this.handleMessage(msg);
 		});
 	}
 
-	disconnect() {
-		if (this.socket) {
-			this.socket.close();
-			delete this.socket;
+	disconnect(): void {
+		if (this.transport != null) {
+			this.transport.disconnect();
+			this.transport = null;
 		}
 	}
 
-	sendData(data) {
-		this.socket.send(JSON.stringify(data));
+	// TODO: Should this be public??
+	sendData(data: any): void {
+		this.transport.send(data);
 	}
 
-	setTime(position) {
+	setTime(position: number): void {
 		this.currentPosition = position;
 	}
 
-	seekTo(position) {
+	seekTo(position: number): void {
 		this.setTime(position);
 		this.doSeek = true;
 		this.sendState();
 	}
 
-	setPause(pause) {
+	setPause(pause: boolean): void {
 		this.paused = pause;
 		if (!pause && !this.isReady) {
 			// potential problem: unpause is sent from video.play()
@@ -76,14 +88,16 @@ class WebSocketProtocol extends EventEmitter {
 		this.sendState();
 	}
 
-	sendFile(duration, name) {
-		if (name) {
+	sendFile(): any;
+	sendFile(duration: number, name: string): any;
+	sendFile(duration?: number, name?: string): any {
+		if (name != null) {
 			// TODO size attribute for non-html5 video players?
 			// 0 means unknown duration
 			if (!duration) duration = 0;
 			this.currentFile = {duration, name, size: 0};
 		}
-		if (this.currentFile) {
+		if (this.currentFile != null) {
 			this.sendData({
 				"Set": {
 					file: this.currentFile
@@ -93,7 +107,7 @@ class WebSocketProtocol extends EventEmitter {
 		}
 	}
 
-	sendReady(ready) {
+	sendReady(ready?: boolean): void {
 		if (ready == undefined || ready == null) {
 			ready = this.isReady;
 		}
@@ -109,40 +123,37 @@ class WebSocketProtocol extends EventEmitter {
 		this.sendData(packet);
 	}
 
-	// Private API
+	private handleMessage(msg: any): void {
+		console.log("SERVER:", msg); // eslint-disable-line no-console
 
-	parseMessage(message) {
-		let parsed = JSON.parse(message);
-		console.log("SERVER:", parsed); // eslint-disable-line no-console
-
-		if (parsed.Error) {
-			this.parseError(parsed.Error);
+		if (msg.Error) {
+			this.parseError(msg.Error);
 		}
-		if (parsed.Hello) {
-			this.parseHello(parsed.Hello);
+		if (msg.Hello) {
+			this.parseHello(msg.Hello);
 		}
-		if (parsed.Set) {
-			this.parseSet(parsed.Set);
+		if (msg.Set) {
+			this.parseSet(msg.Set);
 		}
-		if (parsed.List) {
-			this.parseList(parsed.List);
+		if (msg.List) {
+			this.parseList(msg.List);
 		}
-		if (parsed.State) {
-			this.parseState(parsed.State);
+		if (msg.State) {
+			this.parseState(msg.State);
 		}
-		if (parsed.Chat) {
-			this.parseChat(parsed.Chat);
+		if (msg.Chat) {
+			this.parseChat(msg.Chat);
 		}
 
 		this.sendState();
 	}
 
-	parseError(data) {
+	private parseError(data: any): void {
 		console.log("err", data); // eslint-disable-line no-console
 		// TODO disconnect
 	}
 
-	parseHello(data) {
+	private parseHello(data: any): void {
 		console.log("hello", data); // eslint-disable-line no-console
 		// TODO handle failed logins, etc.
 		this.serverDetails = {
@@ -156,11 +167,11 @@ class WebSocketProtocol extends EventEmitter {
 			connectedString += ` MOTD:
 			${data.motd}`;
 		}
-		this.emit("connected", connectedString);
+		this.connected.call(f => f(connectedString));
 		// roomEventRequest?
 	}
 
-	parseSet(data) {
+	private parseSet(data: any): void {
 		console.log("set", data); // eslint-disable-line no-console
 		// TODO playlists
 		if (data.user) {
@@ -168,24 +179,24 @@ class WebSocketProtocol extends EventEmitter {
 				let user = data.user[key];
 				if (user.event) {
 					if (user.event.joined) {
-						this.emit("joined", key, user.room.name);
+						this.joined.call(f => f(key, user.room.name));
 						this.roomdetails[key] = {room: user.room.name};
 					}
 					if (user.event.left) {
-						this.emit("left", key, user.room.name);
+						this.left.call(f => f(key, user.room.name));
 						delete this.roomdetails[key];
 					}
 				} else {
 					if (this.roomdetails[key] && this.roomdetails[key].room != user.room.name) {
 						// user has moved
 						this.roomdetails[key].room = user.room.name;
-						this.emit("moved", key, user.room.name);
+						this.moved.call(f => f(key, user.room.name));
 					}
 				}
 				if (user.file) {
 					this.roomdetails[key].file = user.file;
 				}
-				this.emit("roomdetails", this.roomdetails);
+				this.roomDetailsUpdated.call(f => f(this.roomdetails));
 			});
 		}
 
@@ -196,14 +207,14 @@ class WebSocketProtocol extends EventEmitter {
 			this.roomdetails[data.ready.username].isReady = data.ready.isReady;
 			this.roomdetails[data.ready.username].manuallyInitiated = data.ready.manuallyInitiated;
 
-			this.emit("roomdetails", this.roomdetails);
+			this.roomDetailsUpdated.call(f => f(this.roomdetails));
 		}
 
 		// to implement:
 		// room, controllerAuth, newControlledRoom, playlistIndex, playlistChange
 	}
 
-	parseList(data) {
+	private parseList(data: any): void {
 		this.roomdetails = {};
 		Object.keys(data).forEach((room) => {
 			Object.keys(data[room]).forEach((user) => {
@@ -211,10 +222,10 @@ class WebSocketProtocol extends EventEmitter {
 				this.roomdetails[user].room = room;
 			});
 		});
-		this.emit("roomdetails", data);
+		this.roomDetailsUpdated.call(f => f(this.roomdetails));
 	}
 
-	parseState(data) {
+	private parseState(data: any): void {
 		let messageAge = 0;
 		if (data.ignoringOnTheFly && data.ignoringOnTheFly.server) {
 			this.serverIgnoringOnTheFly = data.ignoringOnTheFly.server;
@@ -224,15 +235,15 @@ class WebSocketProtocol extends EventEmitter {
 		if (data.playstate) {
 			if (data.playstate.setBy && data.playstate.setBy != this.currentUsername) {
 				if (this.updateToServer || (data.playstate.doSeek && !this.doSeek)) {
-					this.emit("seek", data.playstate.position, data.playstate.setBy);
+					this.seek.call(f => f(data.playstate.position, data.playstate.setBy));
 					this.updateToServer = false;
 				}
 				if (this.paused != data.playstate.paused) {
 					if (data.playstate.paused) {
-						this.emit("pause", data.playstate.setBy);
+						this.pause.call(f => f(data.playstate.setBy));
 						this.paused = true;
 					} else {
-						this.emit("unpause", data.playstate.setBy);
+						this.unpause.call(f => f(data.playstate.setBy));
 						this.paused = false;
 					}
 				}
@@ -259,13 +270,13 @@ class WebSocketProtocol extends EventEmitter {
 		// compare server position and client position, ffwd/rewind etc.
 	}
 
-	parseChat(data) {
-		this.emit("chat", data.username, data.message);
+	private parseChat(data: any): void {
+		this.chat.call(f => f(data.username, data.message));
 	}
 
-	sendState() {
+	private sendState(): void {
 		let clientIgnoreIsNotSet = (this.clientIgnoringOnTheFly == 0 || this.serverIgnoringOnTheFly != 0);
-		let output = {};
+		let output: any = {};
 		output.State = {};
 
 		if (clientIgnoreIsNotSet) {
@@ -305,11 +316,11 @@ class WebSocketProtocol extends EventEmitter {
 		this.sendData(output);
 	}
 
-	sendHello(username, room, password) {
+	private sendHello(username: string, room: string, password?: string): void {
 		this.currentUsername = username;
 		this.currentRoom = room;
 
-		let packet = {
+		let packet: any = {
 			"Hello": {
 				username,
 				"room": {
@@ -326,9 +337,7 @@ class WebSocketProtocol extends EventEmitter {
 		this.sendData(packet);
 	}
 
-	sendListRequest() {
+	private sendListRequest(): void {
 		this.sendData({"List": null});
 	}
 }
-
-SyncWeb.Client = WebSocketProtocol;

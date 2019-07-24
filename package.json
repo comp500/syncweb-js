@@ -2,11 +2,13 @@
   "name": "syncweb-js",
   "version": "1.0.0",
   "description": "A library to connect to Syncplay servers through a WebSockets bridge.",
-  "main": "dist/syncweb.js",
+  "main": "dist/syncweb-node.js",
+  "browser": "dist/syncweb-web.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "watch": "gulp watch",
-    "build": "gulp"
+    "watch": "parcel watch src/syncweb-web.ts --global SyncWeb",
+    "build": "parcel build src/syncweb-web.ts --global SyncWeb && tsc",
+    "prepare": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -19,13 +21,7 @@
   },
   "homepage": "https://github.com/comp500/syncweb-js#readme",
   "devDependencies": {
-    "babel-core": "^6.26.0",
-    "babel-preset-env": "^1.6.1",
-    "gulp": "^3.9.1",
-    "gulp-babel": "^7.0.0",
-    "gulp-concat": "^2.6.1",
-    "gulp-iife": "^0.3.0",
-    "gulp-sourcemaps": "^2.6.3",
-    "gulp-uglify": "^3.0.0"
+    "parcel-bundler": "^1.12.3",
+    "typescript": "^3.5.3"
   }
 }

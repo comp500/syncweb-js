@@ -1,0 +1,9 @@
+{
+	"files": [
+		"src/syncweb-node.ts"
+	],
+	"compilerOptions": {
+		"declaration": true,
+		"outDir": "dist"
+	}
+}

@@ -1,15 +1,11 @@
-class PingService {
-	constructor() {
-		this.pingMovingAverageWeight = 0.85;
-		this.roundTripTime = 0;
-		this.forwardDelay = 0;
-		this.averageRTT = 0;
-	}
+export default class PingService {
+	private pingMovingAverageWeight = 0.85;
+	private roundTripTime = 0;
+	private forwardDelay = 0;
+	private averageRTT = 0;
 
 	// Directly ported from python implementation
-	receiveMessage(timestamp, senderRTT) {
-		if (!timestamp) return;
-
+	receiveMessage(timestamp: number, senderRTT: number): void {
 		this.roundTripTime = (Date.now() / 1000) - timestamp;
 
 		if (this.roundTripTime < 0 || senderRTT < 0) return;
@@ -27,13 +23,11 @@ class PingService {
 		}
 	}
 
-	getLastForwardDelay() {
+	getLastForwardDelay(): number {
 		return this.forwardDelay;
 	}
 
-	getRTT() {
+	getRTT(): number {
 		return this.roundTripTime;
 	}
 }
-
-SyncWeb.util.PingService = PingService;
