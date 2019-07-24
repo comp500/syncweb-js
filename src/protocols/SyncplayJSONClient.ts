@@ -17,11 +17,15 @@ export default class SyncplayJSONClient {
 	private serverPosition = 0;
 	private updateToServer = true;
 	private currentFile: any = null;
-	private currentUsername: string;
 	private serverDetails: any = null;
 	private stateChanged = false;
 	private latencyCalculation: number;
 	private currentRoom: string;
+
+	private _currentUsername: string;
+	getCurrentUsername(): string {
+		return this._currentUsername;
+	}
 
 	readonly connected = new EventTracker<(connectedString: string) => void>();
 	readonly joined = new EventTracker<(userName: string, roomName: string) => void>();
@@ -116,7 +120,7 @@ export default class SyncplayJSONClient {
 				"ready": {
 					isReady: ready,
 					manuallyInitiated: true,
-					username: this.currentUsername
+					username: this._currentUsername
 				}
 			}
 		};
@@ -233,7 +237,7 @@ export default class SyncplayJSONClient {
 			this.stateChanged = false;
 		}
 		if (data.playstate) {
-			if (data.playstate.setBy && data.playstate.setBy != this.currentUsername) {
+			if (data.playstate.setBy && data.playstate.setBy != this._currentUsername) {
 				if (this.updateToServer || (data.playstate.doSeek && !this.doSeek)) {
 					this.seek.emit(data.playstate.position, data.playstate.setBy);
 					this.updateToServer = false;
@@ -317,7 +321,7 @@ export default class SyncplayJSONClient {
 	}
 
 	private sendHello(username: string, room: string, password?: string): void {
-		this.currentUsername = username;
+		this._currentUsername = username;
 		this.currentRoom = room;
 
 		let packet: any = {
