@@ -2,12 +2,12 @@
   "name": "syncweb-js",
   "version": "1.0.0",
   "description": "A library to connect to Syncplay servers through a WebSockets bridge.",
-  "main": "dist/syncweb-node.js",
-  "browser": "dist/syncweb-web.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "watch": "parcel watch src/syncweb-web.ts --global SyncWeb",
-    "build": "parcel build src/syncweb-web.ts --global SyncWeb && tsc",
+    "watch": "parcel watch src/syncweb.ts --global SyncWeb",
+    "build": "parcel build src/syncweb.ts --global SyncWeb && tsc",
     "prepare": "npm run build"
   },
   "repository": {

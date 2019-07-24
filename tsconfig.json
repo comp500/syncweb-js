@@ -1,9 +1,10 @@
 {
 	"files": [
-		"src/syncweb-node.ts"
+		"src/index.ts"
 	],
 	"compilerOptions": {
 		"declaration": true,
-		"outDir": "dist"
+		"outDir": "dist",
+		"esModuleInterop": true
 	}
 }
