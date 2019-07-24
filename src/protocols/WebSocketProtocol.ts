@@ -20,17 +20,17 @@ export default class WebSocketProtocol implements JSONMessageProtocol {
 				if (messageText == null) return;
 				if (messageText.length < 1) return;
 				let dataJSON = JSON.parse(messageText);
-				this.message.call(f => f(dataJSON));
+				this.message.emit(dataJSON);
 			});
 		});
 		this.socket.addEventListener("open", () => {
-			this.open.call(f => f());
+			this.open.emit();
 		});
 		this.socket.addEventListener("close", () => {
-			this.close.call(f => f());
+			this.close.emit();
 		});
 		this.socket.addEventListener("error", e => {
-			this.error.call(f => f(e));
+			this.error.emit(e);
 		});
 	}
 

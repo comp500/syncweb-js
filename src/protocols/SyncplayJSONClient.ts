@@ -167,7 +167,7 @@ export default class SyncplayJSONClient {
 			connectedString += ` MOTD:
 			${data.motd}`;
 		}
-		this.connected.call(f => f(connectedString));
+		this.connected.emit(connectedString);
 		// roomEventRequest?
 	}
 
@@ -179,24 +179,24 @@ export default class SyncplayJSONClient {
 				let user = data.user[key];
 				if (user.event) {
 					if (user.event.joined) {
-						this.joined.call(f => f(key, user.room.name));
+						this.joined.emit(key, user.room.name);
 						this.roomdetails[key] = {room: user.room.name};
 					}
 					if (user.event.left) {
-						this.left.call(f => f(key, user.room.name));
+						this.left.emit(key, user.room.name);
 						delete this.roomdetails[key];
 					}
 				} else {
 					if (this.roomdetails[key] && this.roomdetails[key].room != user.room.name) {
 						// user has moved
 						this.roomdetails[key].room = user.room.name;
-						this.moved.call(f => f(key, user.room.name));
+						this.moved.emit(key, user.room.name);
 					}
 				}
 				if (user.file) {
 					this.roomdetails[key].file = user.file;
 				}
-				this.roomDetailsUpdated.call(f => f(this.roomdetails));
+				this.roomDetailsUpdated.emit(this.roomdetails);
 			});
 		}
 
@@ -207,7 +207,7 @@ export default class SyncplayJSONClient {
 			this.roomdetails[data.ready.username].isReady = data.ready.isReady;
 			this.roomdetails[data.ready.username].manuallyInitiated = data.ready.manuallyInitiated;
 
-			this.roomDetailsUpdated.call(f => f(this.roomdetails));
+			this.roomDetailsUpdated.emit(this.roomdetails);
 		}
 
 		// to implement:
@@ -222,7 +222,7 @@ export default class SyncplayJSONClient {
 				this.roomdetails[user].room = room;
 			});
 		});
-		this.roomDetailsUpdated.call(f => f(this.roomdetails));
+		this.roomDetailsUpdated.emit(this.roomdetails);
 	}
 
 	private parseState(data: any): void {
@@ -235,15 +235,15 @@ export default class SyncplayJSONClient {
 		if (data.playstate) {
 			if (data.playstate.setBy && data.playstate.setBy != this.currentUsername) {
 				if (this.updateToServer || (data.playstate.doSeek && !this.doSeek)) {
-					this.seek.call(f => f(data.playstate.position, data.playstate.setBy));
+					this.seek.emit(data.playstate.position, data.playstate.setBy);
 					this.updateToServer = false;
 				}
 				if (this.paused != data.playstate.paused) {
 					if (data.playstate.paused) {
-						this.pause.call(f => f(data.playstate.setBy));
+						this.pause.emit(data.playstate.setBy);
 						this.paused = true;
 					} else {
-						this.unpause.call(f => f(data.playstate.setBy));
+						this.unpause.emit(data.playstate.setBy);
 						this.paused = false;
 					}
 				}
@@ -271,7 +271,7 @@ export default class SyncplayJSONClient {
 	}
 
 	private parseChat(data: any): void {
-		this.chat.call(f => f(data.username, data.message));
+		this.chat.emit(data.username, data.message);
 	}
 
 	private sendState(): void {

@@ -1,5 +1,5 @@
 // Quite possibly the most elegant event system since the Minecraft Forge Event Bus
-export default class EventTracker<T> {
+export default class EventTracker<T extends (...args: any) => any> {
 	private subscribers: T[] = [];
 
 	subscribe(func: T): void {
@@ -11,9 +11,7 @@ export default class EventTracker<T> {
 		this.subscribers.splice(i, 1);
 	}
 
-	// Works like a map(), but over each subscriber function
-	// you need to call the given function in the function you give, but the return value is passed back as an array
-	call<U>(caller: (func: T) => U): U[] {
-		return this.subscribers.map((func) => caller(func));
+	emit(...args: Parameters<T>): ReturnType<T>[] {
+		return this.subscribers.map((func) => func(...args));
 	}
 }
