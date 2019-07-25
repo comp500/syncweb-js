@@ -2,164 +2,9 @@ import WebSocketProtocol from "./WebSocketProtocol";
 import JSONMessageProtocol from "./JSONMessageProtocol";
 import PingService from "../util/PingService";
 import EventTracker from "../util/EventTracker";
-
-class File {
-	constructor(public duration: number, public name: string, public size: number) {}
-}
-
-class ClientFeatures {
-	sharedPlaylists?: true
-	chat?: true
-	featureList?: true
-	readiness?: true
-	managedRooms?: true
-}
-
-class Request {
-	Hello?: {
-		username: string,
-		password?: string,
-		room: {
-			name: string
-		},
-		version: "1.2.255",
-		realversion: "1.6.4", // the mark of a well designed protocol
-		features: ClientFeatures
-	};
-	Set?: {
-		file?: File,
-		ready?: {
-			isReady: boolean,
-			manuallyInitiated: boolean,
-			// Is this used?
-			username?: string
-		}
-	};
-	// null List denotes a list request
-	List?: null;
-	State?: {
-		playstate: {
-			position: number,
-			paused: boolean,
-		},
-		ping: {
-			latencyCalculation: number,
-			clientLatencyCalculation: number,
-			clientRtt: number
-		}
-		// TODO: FIGURE OUT WHAT IGNORING ON THE FLY IS AGAIN
-		ignoringOnTheFly: {
-			client?: Exclude<number, 0>
-			server?: Exclude<number, 0>
-		}
-	};
-	Chat?: string;
-	// TLS??
-
-	static setFile(file: File): Request {
-		const req = new Request();
-		req.Set = {file};
-		return req;
-	}
-
-	static setReady(ready: boolean, manual: boolean, username: string): Request {
-		const req = new Request();
-		req.Set = {
-			ready: {
-				isReady: ready,
-				manuallyInitiated: manual,
-				username
-			}
-		};
-		return req;
-	}
-}
-
-class Response {
-	Hello?: {
-		username: string,
-		version: string, // Is always the same as the version you send
-		realversion: string,
-		motd: string,
-		room: {
-			name: string
-		},
-		features: {
-			maxUsernameLength?: number,
-			chat?: boolean,
-			maxChatMessageLength?: number,
-			maxFilenameLength?: number,
-			isolateRooms?: boolean,
-			managedRooms?: boolean,
-			readiness?: boolean,
-			maxRoomNameLength?: number
-		}
-	}
-	Error?: {
-		message: string
-	}
-	Set?: {
-		user?: {
-			[username: string]: {
-				room: {
-					name: string
-				},
-				event?: {
-					joined?: boolean,
-					left?: boolean
-				},
-				file?: File
-			}
-		},
-		ready?: {
-			username: string,
-			manuallyInitiated: boolean,
-			isReady: boolean | null
-		},
-		playlistChange?: {
-			files: File[],
-			user: string | null
-		},
-		playlistIndex?: {
-			index: number | null,
-			user: string | null
-		}
-	}
-	List?: {
-		[room: string]: {
-			[username: string]: {
-				position?: number,
-				file: File | {},
-				controller?: boolean,
-				features?: ClientFeatures,
-				isReady?: boolean
-			}
-		}
-	}
-	State?: {
-		ping?: {
-			serverRtt: number,
-			latencyCalculation: number,
-			clientLatencyCalculation: number
-		},
-		playstate?: {
-			position: number,
-			doSeek: boolean,
-			paused: boolean,
-			setBy: string
-		}
-		// TODO: FIGURE OUT WHAT IGNORING ON THE FLY IS AGAIN
-		ignoringOnTheFly?: {
-			client?: Exclude<number, 0>
-			server?: Exclude<number, 0>
-		}
-	};
-	Chat?: {
-		username: string,
-		message: string
-	};
-	// TLS??
-}
+import SyncplayFile from "./messages/SyncplayFile";
+import SyncplayRequest from "./messages/SyncplayRequest";
+import SyncplayResponse from "./messages/SyncplayResponse";
 
 export default class SyncplayJSONClient {
 	private transport?: JSONMessageProtocol;
@@ -174,10 +19,10 @@ export default class SyncplayJSONClient {
 	private pingService = new PingService();
 	private serverPosition = 0;
 	private updateToServer = true;
-	private currentFile?: File;
+	private currentFile?: SyncplayFile;
 	private serverDetails?: any;
 	private stateChanged = false;
-	private latencyCalculation = 0;
+	private latencyCalculation?: number;
 	private currentRoom = "";
 
 	private _currentUsername = "";
@@ -213,7 +58,7 @@ export default class SyncplayJSONClient {
 		});
 
 		this.transport.message.subscribe(msg => {
-			this.handleMessage(<Response>msg);
+			this.handleMessage(<SyncplayResponse>msg);
 		});
 	}
 
@@ -224,7 +69,7 @@ export default class SyncplayJSONClient {
 		}
 	}
 
-	private sendData(data: Request): void {
+	private sendData(data: SyncplayRequest): void {
 		if (this.transport != undefined) {
 			this.transport.send(data);
 		}
@@ -261,7 +106,7 @@ export default class SyncplayJSONClient {
 			this.currentFile = { duration, name, size: 0 };
 		}
 		if (this.currentFile != undefined) {
-			this.sendData(Request.setFile(this.currentFile));
+			this.sendData(SyncplayRequest.setFile(this.currentFile));
 			this.sendListRequest();
 		}
 	}
@@ -270,10 +115,10 @@ export default class SyncplayJSONClient {
 		if (ready == undefined) {
 			ready = this.isReady;
 		}
-		this.sendData(Request.setReady(ready, true, this._currentUsername));
+		this.sendData(SyncplayRequest.setReady(ready, true, this._currentUsername));
 	}
 
-	private handleMessage(msg: Response): void {
+	private handleMessage(msg: SyncplayResponse): void {
 		console.log("SERVER:", msg); // eslint-disable-line no-console
 
 		if (msg.Error) {
@@ -425,73 +270,51 @@ export default class SyncplayJSONClient {
 	}
 
 	private sendState(): void {
-		let clientIgnoreIsNotSet = this.clientIgnoringOnTheFly == 0 || this.serverIgnoringOnTheFly != 0;
-		let output = new Request();
-		output.State = {};
+		const clientIgnoreIsNotSet = this.clientIgnoringOnTheFly == 0 || this.serverIgnoringOnTheFly != 0;
 
-		if (clientIgnoreIsNotSet) {
-			output.State.playstate = {
-				position: this.currentPosition,
-				paused: this.paused
-			};
-			output.State.playstate.position =;
-			output.State.playstate.paused = this.paused;
-			if (this.doSeek) {
-				output.State.playstate.doSeek = true;
-				this.doSeek = false;
-			}
+		let wasDoSeek = false;
+		if (this.doSeek) {
+			wasDoSeek = true;
+			this.doSeek = false;
 		}
+		const playstate = clientIgnoreIsNotSet ? {
+			position: this.currentPosition,
+			paused: this.paused,
+			doSeek: wasDoSeek
+		} : undefined;
 
-		output.State.ping = {};
-		if (this.latencyCalculation) {
-			output.State.ping.latencyCalculation = this.latencyCalculation;
-		}
-		output.State.ping.clientLatencyCalculation = Date.now() / 1000;
-		output.State.ping.clientRtt = this.pingService.getRTT();
+		let ping = {
+			latencyCalculation: this.latencyCalculation,
+			clientLatencyCalculation: Date.now() / 1000,
+			clientRtt: this.pingService.getRTT()
+		};
 
 		if (this.stateChanged) {
 			// TODO update this properly
 			this.clientIgnoringOnTheFly += 1;
 		}
 
-		if (this.serverIgnoringOnTheFly > 0 || this.clientIgnoringOnTheFly > 0) {
-			output.State.ignoringOnTheFly = {};
-			if (this.serverIgnoringOnTheFly > 0) {
-				output.State.ignoringOnTheFly.server = this.serverIgnoringOnTheFly;
-				this.serverIgnoringOnTheFly = 0;
-			}
-			if (this.clientIgnoringOnTheFly > 0) {
-				output.State.ignoringOnTheFly.client = this.clientIgnoringOnTheFly;
-			}
+		let ignoringOnTheFlyClient: number | undefined;
+		let ignoringOnTheFlyServer: number | undefined;
+		if (this.serverIgnoringOnTheFly > 0) {
+			ignoringOnTheFlyServer = this.serverIgnoringOnTheFly;
+			this.serverIgnoringOnTheFly = 0;
+		}
+		if (this.clientIgnoringOnTheFly > 0) {
+			ignoringOnTheFlyClient = this.clientIgnoringOnTheFly;
 		}
 
-		console.log(output); // eslint-disable-line no-console
-
-		this.sendData(output);
+		this.sendData(SyncplayRequest.state(ping, ignoringOnTheFlyClient, ignoringOnTheFlyServer, playstate));
 	}
 
 	private sendHello(username: string, room: string, password?: string): void {
 		this._currentUsername = username;
 		this.currentRoom = room;
 
-		let packet: any = {
-			Hello: {
-				username,
-				room: {
-					name: room
-				},
-				version: "1.5.1"
-			}
-		};
-
-		if (password) {
-			packet.Hello.password = password;
-		}
-
-		this.sendData(packet);
+		this.sendData(SyncplayRequest.hello(username, room, password));
 	}
 
 	private sendListRequest(): void {
-		this.sendData({ List: null });
+		this.sendData(SyncplayRequest.requestList());
 	}
 }
