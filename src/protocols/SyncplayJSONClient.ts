@@ -3,8 +3,166 @@ import JSONMessageProtocol from "./JSONMessageProtocol";
 import PingService from "../util/PingService";
 import EventTracker from "../util/EventTracker";
 
+class File {
+	constructor(public duration: number, public name: string, public size: number) {}
+}
+
+class ClientFeatures {
+	sharedPlaylists?: true
+	chat?: true
+	featureList?: true
+	readiness?: true
+	managedRooms?: true
+}
+
+class Request {
+	Hello?: {
+		username: string,
+		password?: string,
+		room: {
+			name: string
+		},
+		version: "1.2.255",
+		realversion: "1.6.4", // the mark of a well designed protocol
+		features: ClientFeatures
+	};
+	Set?: {
+		file?: File,
+		ready?: {
+			isReady: boolean,
+			manuallyInitiated: boolean,
+			// Is this used?
+			username?: string
+		}
+	};
+	// null List denotes a list request
+	List?: null;
+	State?: {
+		playstate: {
+			position: number,
+			paused: boolean,
+		},
+		ping: {
+			latencyCalculation: number,
+			clientLatencyCalculation: number,
+			clientRtt: number
+		}
+		// TODO: FIGURE OUT WHAT IGNORING ON THE FLY IS AGAIN
+		ignoringOnTheFly: {
+			client?: Exclude<number, 0>
+			server?: Exclude<number, 0>
+		}
+	};
+	Chat?: string;
+	// TLS??
+
+	static setFile(file: File): Request {
+		const req = new Request();
+		req.Set = {file};
+		return req;
+	}
+
+	static setReady(ready: boolean, manual: boolean, username: string): Request {
+		const req = new Request();
+		req.Set = {
+			ready: {
+				isReady: ready,
+				manuallyInitiated: manual,
+				username
+			}
+		};
+		return req;
+	}
+}
+
+class Response {
+	Hello?: {
+		username: string,
+		version: string, // Is always the same as the version you send
+		realversion: string,
+		motd: string,
+		room: {
+			name: string
+		},
+		features: {
+			maxUsernameLength?: number,
+			chat?: boolean,
+			maxChatMessageLength?: number,
+			maxFilenameLength?: number,
+			isolateRooms?: boolean,
+			managedRooms?: boolean,
+			readiness?: boolean,
+			maxRoomNameLength?: number
+		}
+	}
+	Error?: {
+		message: string
+	}
+	Set?: {
+		user?: {
+			[username: string]: {
+				room: {
+					name: string
+				},
+				event?: {
+					joined?: boolean,
+					left?: boolean
+				},
+				file?: File
+			}
+		},
+		ready?: {
+			username: string,
+			manuallyInitiated: boolean,
+			isReady: boolean | null
+		},
+		playlistChange?: {
+			files: File[],
+			user: string | null
+		},
+		playlistIndex?: {
+			index: number | null,
+			user: string | null
+		}
+	}
+	List?: {
+		[room: string]: {
+			[username: string]: {
+				position?: number,
+				file: File | {},
+				controller?: boolean,
+				features?: ClientFeatures,
+				isReady?: boolean
+			}
+		}
+	}
+	State?: {
+		ping?: {
+			serverRtt: number,
+			latencyCalculation: number,
+			clientLatencyCalculation: number
+		},
+		playstate?: {
+			position: number,
+			doSeek: boolean,
+			paused: boolean,
+			setBy: string
+		}
+		// TODO: FIGURE OUT WHAT IGNORING ON THE FLY IS AGAIN
+		ignoringOnTheFly?: {
+			client?: Exclude<number, 0>
+			server?: Exclude<number, 0>
+		}
+	};
+	Chat?: {
+		username: string,
+		message: string
+	};
+	// TLS??
+}
+
 export default class SyncplayJSONClient {
-	private transport: JSONMessageProtocol | null = null;
+	private transport?: JSONMessageProtocol;
 
 	private currentPosition = 0;
 	private paused = true;
@@ -16,8 +174,8 @@ export default class SyncplayJSONClient {
 	private pingService = new PingService();
 	private serverPosition = 0;
 	private updateToServer = true;
-	private currentFile: any = null;
-	private serverDetails: any = null;
+	private currentFile?: File;
+	private serverDetails?: any;
 	private stateChanged = false;
 	private latencyCalculation = 0;
 	private currentRoom = "";
@@ -55,20 +213,19 @@ export default class SyncplayJSONClient {
 		});
 
 		this.transport.message.subscribe(msg => {
-			this.handleMessage(msg);
+			this.handleMessage(<Response>msg);
 		});
 	}
 
 	disconnect(): void {
-		if (this.transport != null) {
+		if (this.transport != undefined) {
 			this.transport.disconnect();
-			this.transport = null;
+			this.transport = undefined;
 		}
 	}
 
-	// TODO: Should this be public??
-	private sendData(data: any): void {
-		if (this.transport != null) {
+	private sendData(data: Request): void {
+		if (this.transport != undefined) {
 			this.transport.send(data);
 		}
 	}
@@ -94,42 +251,29 @@ export default class SyncplayJSONClient {
 		this.sendState();
 	}
 
-	sendFile(): any;
-	sendFile(duration: number, name: string): any;
-	sendFile(duration?: number, name?: string): any {
-		if (name != null) {
+	sendFile(): void;
+	sendFile(duration: number, name: string): void;
+	sendFile(duration?: number, name?: string): void {
+		if (name != undefined) {
 			// TODO size attribute for non-html5 video players?
 			// 0 means unknown duration
 			if (!duration) duration = 0;
 			this.currentFile = { duration, name, size: 0 };
 		}
-		if (this.currentFile != null) {
-			this.sendData({
-				Set: {
-					file: this.currentFile
-				}
-			});
+		if (this.currentFile != undefined) {
+			this.sendData(Request.setFile(this.currentFile));
 			this.sendListRequest();
 		}
 	}
 
 	sendReady(ready?: boolean): void {
-		if (ready == undefined || ready == null) {
+		if (ready == undefined) {
 			ready = this.isReady;
 		}
-		let packet = {
-			Set: {
-				ready: {
-					isReady: ready,
-					manuallyInitiated: true,
-					username: this._currentUsername
-				}
-			}
-		};
-		this.sendData(packet);
+		this.sendData(Request.setReady(ready, true, this._currentUsername));
 	}
 
-	private handleMessage(msg: any): void {
+	private handleMessage(msg: Response): void {
 		console.log("SERVER:", msg); // eslint-disable-line no-console
 
 		if (msg.Error) {
@@ -282,12 +426,15 @@ export default class SyncplayJSONClient {
 
 	private sendState(): void {
 		let clientIgnoreIsNotSet = this.clientIgnoringOnTheFly == 0 || this.serverIgnoringOnTheFly != 0;
-		let output: any = {};
+		let output = new Request();
 		output.State = {};
 
 		if (clientIgnoreIsNotSet) {
-			output.State.playstate = {};
-			output.State.playstate.position = this.currentPosition;
+			output.State.playstate = {
+				position: this.currentPosition,
+				paused: this.paused
+			};
+			output.State.playstate.position =;
 			output.State.playstate.paused = this.paused;
 			if (this.doSeek) {
 				output.State.playstate.doSeek = true;
