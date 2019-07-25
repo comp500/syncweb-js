@@ -6,7 +6,7 @@ export default class PingService {
 
 	// Directly ported from python implementation
 	receiveMessage(timestamp: number, senderRTT: number): void {
-		this.roundTripTime = (Date.now() / 1000) - timestamp;
+		this.roundTripTime = Date.now() / 1000 - timestamp;
 
 		if (this.roundTripTime < 0 || senderRTT < 0) return;
 
@@ -14,10 +14,11 @@ export default class PingService {
 			this.averageRTT = this.roundTripTime;
 		}
 		// Add to moving average
-		this.averageRTT = (this.averageRTT * this.pingMovingAverageWeight) + (this.roundTripTime * (1 - this.pingMovingAverageWeight));
+		this.averageRTT =
+			this.averageRTT * this.pingMovingAverageWeight + this.roundTripTime * (1 - this.pingMovingAverageWeight);
 
 		if (senderRTT < this.roundTripTime) {
-			this.forwardDelay = (this.averageRTT / 2) + (this.roundTripTime - senderRTT);
+			this.forwardDelay = this.averageRTT / 2 + (this.roundTripTime - senderRTT);
 		} else {
 			this.forwardDelay = this.averageRTT / 2;
 		}

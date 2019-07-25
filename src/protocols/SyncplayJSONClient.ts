@@ -4,13 +4,13 @@ import PingService from "../util/PingService";
 import EventTracker from "../util/EventTracker";
 
 export default class SyncplayJSONClient {
-	private transport: JSONMessageProtocol = null;
+	private transport: JSONMessageProtocol | null = null;
 
 	private currentPosition = 0;
 	private paused = true;
 	private doSeek = false;
 	private isReady = false;
-	private roomdetails = {};
+	private roomdetails: any = {};
 	private clientIgnoringOnTheFly = 0;
 	private serverIgnoringOnTheFly = 0;
 	private pingService = new PingService();
@@ -19,10 +19,10 @@ export default class SyncplayJSONClient {
 	private currentFile: any = null;
 	private serverDetails: any = null;
 	private stateChanged = false;
-	private latencyCalculation: number;
-	private currentRoom: string;
+	private latencyCalculation = 0;
+	private currentRoom = "";
 
-	private _currentUsername: string;
+	private _currentUsername = "";
 	getCurrentUsername(): string {
 		return this._currentUsername;
 	}
@@ -37,7 +37,7 @@ export default class SyncplayJSONClient {
 	readonly unpause = new EventTracker<(setBy: string) => void>();
 	readonly chat = new EventTracker<(userName: string, message: string) => void>();
 
-	connect(options, callback): void {
+	connect(options: { name: string; url: string; room: string; password: string }, callback: () => void): void {
 		this.transport = new WebSocketProtocol(options.url);
 
 		this.transport.open.subscribe(() => {
@@ -54,7 +54,7 @@ export default class SyncplayJSONClient {
 			callback();
 		});
 
-		this.transport.message.subscribe((msg) => {
+		this.transport.message.subscribe(msg => {
 			this.handleMessage(msg);
 		});
 	}
@@ -67,8 +67,10 @@ export default class SyncplayJSONClient {
 	}
 
 	// TODO: Should this be public??
-	sendData(data: any): void {
-		this.transport.send(data);
+	private sendData(data: any): void {
+		if (this.transport != null) {
+			this.transport.send(data);
+		}
 	}
 
 	setTime(position: number): void {
@@ -99,11 +101,11 @@ export default class SyncplayJSONClient {
 			// TODO size attribute for non-html5 video players?
 			// 0 means unknown duration
 			if (!duration) duration = 0;
-			this.currentFile = {duration, name, size: 0};
+			this.currentFile = { duration, name, size: 0 };
 		}
 		if (this.currentFile != null) {
 			this.sendData({
-				"Set": {
+				Set: {
 					file: this.currentFile
 				}
 			});
@@ -116,8 +118,8 @@ export default class SyncplayJSONClient {
 			ready = this.isReady;
 		}
 		let packet = {
-			"Set": {
-				"ready": {
+			Set: {
+				ready: {
 					isReady: ready,
 					manuallyInitiated: true,
 					username: this._currentUsername
@@ -179,12 +181,12 @@ export default class SyncplayJSONClient {
 		console.log("set", data); // eslint-disable-line no-console
 		// TODO playlists
 		if (data.user) {
-			Object.keys(data.user).forEach((key) => {
+			Object.keys(data.user).forEach(key => {
 				let user = data.user[key];
 				if (user.event) {
 					if (user.event.joined) {
 						this.joined.emit(key, user.room.name);
-						this.roomdetails[key] = {room: user.room.name};
+						this.roomdetails[key] = { room: user.room.name };
 					}
 					if (user.event.left) {
 						this.left.emit(key, user.room.name);
@@ -220,8 +222,8 @@ export default class SyncplayJSONClient {
 
 	private parseList(data: any): void {
 		this.roomdetails = {};
-		Object.keys(data).forEach((room) => {
-			Object.keys(data[room]).forEach((user) => {
+		Object.keys(data).forEach(room => {
+			Object.keys(data[room]).forEach(user => {
 				this.roomdetails[user] = data[room][user];
 				this.roomdetails[user].room = room;
 			});
@@ -279,7 +281,7 @@ export default class SyncplayJSONClient {
 	}
 
 	private sendState(): void {
-		let clientIgnoreIsNotSet = (this.clientIgnoringOnTheFly == 0 || this.serverIgnoringOnTheFly != 0);
+		let clientIgnoreIsNotSet = this.clientIgnoringOnTheFly == 0 || this.serverIgnoringOnTheFly != 0;
 		let output: any = {};
 		output.State = {};
 
@@ -300,7 +302,8 @@ export default class SyncplayJSONClient {
 		output.State.ping.clientLatencyCalculation = Date.now() / 1000;
 		output.State.ping.clientRtt = this.pingService.getRTT();
 
-		if (this.stateChanged) { // TODO update this properly
+		if (this.stateChanged) {
+			// TODO update this properly
 			this.clientIgnoringOnTheFly += 1;
 		}
 
@@ -325,12 +328,12 @@ export default class SyncplayJSONClient {
 		this.currentRoom = room;
 
 		let packet: any = {
-			"Hello": {
+			Hello: {
 				username,
-				"room": {
+				room: {
 					name: room
 				},
-				"version": "1.5.1"
+				version: "1.5.1"
 			}
 		};
 
@@ -342,6 +345,6 @@ export default class SyncplayJSONClient {
 	}
 
 	private sendListRequest(): void {
-		this.sendData({"List": null});
+		this.sendData({ List: null });
 	}
 }

@@ -7,7 +7,7 @@ export default class WebSocketProtocol implements JSONMessageProtocol {
 	close = new EventTracker<() => void>();
 	error = new EventTracker<(e: any) => void>();
 
-	private socket: WebSocket = null;
+	private socket: WebSocket | null = null;
 
 	constructor(url: string) {
 		this.socket = new WebSocket(url);
@@ -16,7 +16,7 @@ export default class WebSocketProtocol implements JSONMessageProtocol {
 				return;
 			}
 			// Split into JSON lines
-			e.data.split("\n").forEach((messageText) => {
+			e.data.split("\n").forEach((messageText: string) => {
 				if (messageText == null) return;
 				if (messageText.length < 1) return;
 				let dataJSON = JSON.parse(messageText);

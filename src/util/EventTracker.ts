@@ -12,6 +12,6 @@ export default class EventTracker<T extends (...args: any) => any> {
 	}
 
 	emit(...args: Parameters<T>): ReturnType<T>[] {
-		return this.subscribers.map((func) => func(...args));
+		return this.subscribers.map(func => func(...args));
 	}
 }
