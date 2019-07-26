@@ -1,7 +1,7 @@
 import ClientFeatures from "./ClientFeatures";
 import SyncplayFile from "./SyncplayFile";
 
-export default class Response {
+export default class SyncplayResponse {
 	Hello?: {
 		username: string,
 		version: string, // Is always the same as the version you send
@@ -85,4 +85,29 @@ export default class Response {
 		message: string
 	};
 	// TLS??
+
+	// Type guards
+	static hasError(msg: SyncplayResponse): msg is Required<Pick<SyncplayResponse, "Error">> & SyncplayResponse {
+		return msg.Error != undefined;
+	}
+
+	static hasHello(msg: SyncplayResponse): msg is Required<Pick<SyncplayResponse, "Hello">> & SyncplayResponse {
+		return msg.Hello != undefined;
+	}
+
+	static hasSet(msg: SyncplayResponse): msg is Required<Pick<SyncplayResponse, "Set">> & SyncplayResponse {
+		return msg.Set != undefined;
+	}
+
+	static hasList(msg: SyncplayResponse): msg is Required<Pick<SyncplayResponse, "List">> & SyncplayResponse {
+		return msg.List != undefined;
+	}
+
+	static hasState(msg: SyncplayResponse): msg is Required<Pick<SyncplayResponse, "State">> & SyncplayResponse {
+		return msg.State != undefined;
+	}
+
+	static hasChat(msg: SyncplayResponse): msg is Required<Pick<SyncplayResponse, "Chat">> & SyncplayResponse {
+		return msg.Chat != undefined;
+	}
 }

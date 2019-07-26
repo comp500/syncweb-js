@@ -5,6 +5,8 @@ import EventTracker from "../util/EventTracker";
 import SyncplayFile from "./messages/SyncplayFile";
 import SyncplayRequest from "./messages/SyncplayRequest";
 import SyncplayResponse from "./messages/SyncplayResponse";
+import Room from "./Room";
+import User from "./User";
 
 export default class SyncplayJSONClient {
 	private transport?: JSONMessageProtocol;
@@ -13,7 +15,6 @@ export default class SyncplayJSONClient {
 	private paused = true;
 	private doSeek = false;
 	private isReady = false;
-	private roomdetails: any = {};
 	private clientIgnoringOnTheFly = 0;
 	private serverIgnoringOnTheFly = 0;
 	private pingService = new PingService();
@@ -30,11 +31,68 @@ export default class SyncplayJSONClient {
 		return this._currentUsername;
 	}
 
+	private _cachedRooms: Room[] = [];
+	getAllRooms(): Room[] {
+		return this._cachedRooms;
+	}
+	getRoom(name: string): Room | undefined {
+		let roomFound: Room | undefined;
+		this._cachedRooms.forEach(room => {
+			if (room.name == name) {
+				roomFound = room;
+				// TODO: break out early?
+			}
+		});
+		return roomFound;
+	}
+	addUserToRoom(user: string, roomName: string) {
+		// Remove the user from existing rooms, in case the user moved
+		let i = this._cachedRooms.length;
+		while (i--) {
+			this._cachedRooms[i].removeUserAndSelf(user);
+		}
+		let done = false;
+		this._cachedRooms.forEach(room => {
+			if (room.name == roomName && !done) {
+				room.addUser(user);
+				done = true;
+				// TODO: break out early?
+			}
+		});
+		if (!done) {
+			const room = new Room(roomName, this._cachedRooms);
+			room.addUser(user);
+			this._cachedRooms.push(room);
+		}
+	}
+	removeUserFromRoom(user: string, roomName: string) {
+		let room = this.getRoom(roomName);
+		if (room != undefined) {
+			room.removeUserAndSelf(user);
+		}
+	}
+	roomHasUser(user: string, roomName: string): boolean {
+		let room = this.getRoom(roomName);
+		if (room != undefined) {
+			return room.getUser(user) != undefined;
+		}
+		return false;
+	}
+	getUser(username: string): User | undefined {
+		this._cachedRooms.forEach(room => {
+			let user = room.getUser(username);
+			if (user != undefined) {
+				return user;
+			}
+		});
+		return undefined;
+	}
+
 	readonly connected = new EventTracker<(connectedString: string) => void>();
 	readonly joined = new EventTracker<(userName: string, roomName: string) => void>();
 	readonly left = new EventTracker<(userName: string, roomName: string) => void>();
 	readonly moved = new EventTracker<(userName: string, roomName: string) => void>();
-	readonly roomDetailsUpdated = new EventTracker<(roomDetails: any) => void>();
+	readonly roomsUpdated = new EventTracker<(rooms: Room[]) => void>();
 	readonly seek = new EventTracker<(position: number, setBy: string) => void>();
 	readonly pause = new EventTracker<(setBy: string) => void>();
 	readonly unpause = new EventTracker<(setBy: string) => void>();
@@ -96,13 +154,11 @@ export default class SyncplayJSONClient {
 		this.sendState();
 	}
 
-	sendFile(): void;
-	sendFile(duration: number, name: string): void;
-	sendFile(duration?: number, name?: string): void {
+	sendFile(name?: string, duration?: number): void {
 		if (name != undefined) {
 			// TODO size attribute for non-html5 video players?
 			// 0 means unknown duration
-			if (!duration) duration = 0;
+			if (duration == undefined) duration = 0;
 			this.currentFile = { duration, name, size: 0 };
 		}
 		if (this.currentFile != undefined) {
@@ -121,138 +177,153 @@ export default class SyncplayJSONClient {
 	private handleMessage(msg: SyncplayResponse): void {
 		console.log("SERVER:", msg); // eslint-disable-line no-console
 
-		if (msg.Error) {
-			this.parseError(msg.Error);
+		if (SyncplayResponse.hasError(msg)) {
+			this.parseError(msg);
 		}
-		if (msg.Hello) {
-			this.parseHello(msg.Hello);
+		if (SyncplayResponse.hasHello(msg)) {
+			this.parseHello(msg);
 		}
-		if (msg.Set) {
-			this.parseSet(msg.Set);
+		if (SyncplayResponse.hasSet(msg)) {
+			this.parseSet(msg);
 		}
-		if (msg.List) {
-			this.parseList(msg.List);
+		if (SyncplayResponse.hasList(msg)) {
+			this.parseList(msg);
 		}
-		if (msg.State) {
-			this.parseState(msg.State);
+		if (SyncplayResponse.hasState(msg)) {
+			this.parseState(msg);
 		}
-		if (msg.Chat) {
-			this.parseChat(msg.Chat);
+		if (SyncplayResponse.hasChat(msg)) {
+			this.parseChat(msg);
 		}
 
 		this.sendState();
 	}
 
-	private parseError(data: any): void {
-		console.log("err", data); // eslint-disable-line no-console
+	private parseError(msg: Required<Pick<SyncplayResponse, "Error">>): void {
+		console.log("err", msg.Error.message); // eslint-disable-line no-console
 		// TODO disconnect
 	}
 
-	private parseHello(data: any): void {
-		console.log("hello", data); // eslint-disable-line no-console
+	private parseHello(msg: Required<Pick<SyncplayResponse, "Hello">>): void {
+		console.log("hello", msg); // eslint-disable-line no-console
 		// TODO handle failed logins, etc.
 		this.serverDetails = {
-			version: data.version,
-			realversion: data.realversion,
-			features: data.features,
-			motd: data.motd
+			version: msg.Hello.version,
+			realversion: msg.Hello.realversion,
+			features: msg.Hello.features,
+			motd: msg.Hello.motd
 		};
-		let connectedString = `Connected to server, version ${data.version}.`;
-		if (data.motd) {
+		let connectedString = `Connected to server, version ${msg.Hello.realversion}.`;
+		if (msg.Hello.motd) {
 			connectedString += ` MOTD:
-			${data.motd}`;
+			${msg.Hello.motd}`;
 		}
 		this.connected.emit(connectedString);
 		// roomEventRequest?
 	}
 
-	private parseSet(data: any): void {
-		console.log("set", data); // eslint-disable-line no-console
+	private parseSet(msg: Required<Pick<SyncplayResponse, "Set">>): void {
+		console.log("set", msg); // eslint-disable-line no-console
 		// TODO playlists
-		if (data.user) {
-			Object.keys(data.user).forEach(key => {
-				let user = data.user[key];
+		if (msg.Set.user) {
+			Object.keys(msg.Set.user).forEach(key => {
+				let user = msg.Set.user![key];
 				if (user.event) {
 					if (user.event.joined) {
 						this.joined.emit(key, user.room.name);
-						this.roomdetails[key] = { room: user.room.name };
+						this.addUserToRoom(key, user.room.name);
 					}
 					if (user.event.left) {
 						this.left.emit(key, user.room.name);
-						delete this.roomdetails[key];
+						this.removeUserFromRoom(key, user.room.name);
 					}
 				} else {
-					if (this.roomdetails[key] && this.roomdetails[key].room != user.room.name) {
+					if (!this.roomHasUser(key, user.room.name)) {
 						// user has moved
-						this.roomdetails[key].room = user.room.name;
+						this.addUserToRoom(key, user.room.name);
 						this.moved.emit(key, user.room.name);
 					}
 				}
 				if (user.file) {
-					this.roomdetails[key].file = user.file;
+					let room = this.getRoom(user.room.name);
+					if (room != undefined) {
+						let cachedUser = room.getUser(key);
+						if (cachedUser != undefined) {
+							cachedUser.file = user.file;
+						}
+					}
 				}
-				this.roomDetailsUpdated.emit(this.roomdetails);
+				this.roomsUpdated.emit(this._cachedRooms);
 			});
 		}
 
-		if (data.ready) {
-			if (!this.roomdetails[data.ready.username]) {
-				this.roomdetails[data.ready.username] = {};
+		// TODO:
+		// Here, we don't have the room name
+		// so make either:
+		// 1. Users reference room names, User list is stored
+		// -- Probably easiest to implement and smallest code size
+		// 2. Do nothing when a non-room user is given (coherent with UI/existing impls?)
+		// 3. Store both room and user lists
+		// actually nvm just do option 1 lol
+		if (msg.Set.ready) {
+			if (!this.roomdetails[]) {
+				this.addUserToRoom()
+				this.roomdetails[msg.Set.ready.username] = {};
 			}
-			this.roomdetails[data.ready.username].isReady = data.ready.isReady;
-			this.roomdetails[data.ready.username].manuallyInitiated = data.ready.manuallyInitiated;
+			this.roomdetails[msg.Set.ready.username].isReady = msg.Set.ready.isReady;
+			this.roomdetails[msg.Set.ready.username].manuallyInitiated = msg.Set.ready.manuallyInitiated;
 
-			this.roomDetailsUpdated.emit(this.roomdetails);
+			this.roomsUpdated.emit(this._cachedRooms);
 		}
 
 		// to implement:
 		// room, controllerAuth, newControlledRoom, playlistIndex, playlistChange
 	}
 
-	private parseList(data: any): void {
-		this.roomdetails = {};
-		Object.keys(data).forEach(room => {
-			Object.keys(data[room]).forEach(user => {
-				this.roomdetails[user] = data[room][user];
+	private parseList(msg: Required<Pick<SyncplayResponse, "List">>): void {
+		this._cachedRooms = [];
+		Object.keys(msg.List).forEach(room => {
+			Object.keys(msg.List[room]).forEach(user => {
+				this.roomdetails[user] = msg.List[room][user];
 				this.roomdetails[user].room = room;
 			});
 		});
-		this.roomDetailsUpdated.emit(this.roomdetails);
+		this.roomsUpdated.emit(this._cachedRooms);
 	}
 
-	private parseState(data: any): void {
+	private parseState(msg: Required<Pick<SyncplayResponse, "State">>): void {
 		let messageAge = 0;
-		if (data.ignoringOnTheFly && data.ignoringOnTheFly.server) {
-			this.serverIgnoringOnTheFly = data.ignoringOnTheFly.server;
+		if (msg.State.ignoringOnTheFly && msg.State.ignoringOnTheFly.server) {
+			this.serverIgnoringOnTheFly = msg.State.ignoringOnTheFly.server;
 			this.clientIgnoringOnTheFly = 0;
 			this.stateChanged = false;
 		}
-		if (data.playstate) {
-			if (data.playstate.setBy && data.playstate.setBy != this._currentUsername) {
-				if (this.updateToServer || (data.playstate.doSeek && !this.doSeek)) {
-					this.seek.emit(data.playstate.position, data.playstate.setBy);
+		if (msg.State.playstate) {
+			if (msg.State.playstate.setBy && msg.State.playstate.setBy != this._currentUsername) {
+				if (this.updateToServer || (msg.State.playstate.doSeek && !this.doSeek)) {
+					this.seek.emit(msg.State.playstate.position, msg.State.playstate.setBy);
 					this.updateToServer = false;
 				}
-				if (this.paused != data.playstate.paused) {
-					if (data.playstate.paused) {
-						this.pause.emit(data.playstate.setBy);
+				if (this.paused != msg.State.playstate.paused) {
+					if (msg.State.playstate.paused) {
+						this.pause.emit(msg.State.playstate.setBy);
 						this.paused = true;
 					} else {
-						this.unpause.emit(data.playstate.setBy);
+						this.unpause.emit(msg.State.playstate.setBy);
 						this.paused = false;
 					}
 				}
 			}
-			if (data.playstate.position) {
-				this.serverPosition = data.playstate.position;
+			if (msg.State.playstate.position) {
+				this.serverPosition = msg.State.playstate.position;
 			}
 		}
-		if (data.ping) {
-			if (data.ping.latencyCalculation) {
-				this.latencyCalculation = data.ping.latencyCalculation;
+		if (msg.State.ping) {
+			if (msg.State.ping.latencyCalculation) {
+				this.latencyCalculation = msg.State.ping.latencyCalculation;
 			}
-			if (data.ping.clientLatencyCalculation) {
-				this.pingService.receiveMessage(data.ping.clientLatencyCalculation, data.ping.serverRtt);
+			if (msg.State.ping.clientLatencyCalculation) {
+				this.pingService.receiveMessage(msg.State.ping.clientLatencyCalculation, msg.State.ping.serverRtt);
 			}
 			messageAge = this.pingService.getLastForwardDelay();
 		}
@@ -265,8 +336,8 @@ export default class SyncplayJSONClient {
 		// compare server position and client position, ffwd/rewind etc.
 	}
 
-	private parseChat(data: any): void {
-		this.chat.emit(data.username, data.message);
+	private parseChat(msg: Required<Pick<SyncplayResponse, "Chat">>): void {
+		this.chat.emit(msg.Chat.username, msg.Chat.message);
 	}
 
 	private sendState(): void {
