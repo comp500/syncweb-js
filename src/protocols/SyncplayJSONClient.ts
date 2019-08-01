@@ -5,7 +5,6 @@ import EventTracker from "../util/EventTracker";
 import SyncplayFile from "./messages/SyncplayFile";
 import SyncplayRequest from "./messages/SyncplayRequest";
 import SyncplayResponse from "./messages/SyncplayResponse";
-import Room from "./Room";
 import User from "./User";
 
 export default class SyncplayJSONClient {
@@ -31,60 +30,55 @@ export default class SyncplayJSONClient {
 		return this._currentUsername;
 	}
 
-	private _cachedRooms: Room[] = [];
-	getAllRooms(): Room[] {
-		return this._cachedRooms;
+	private _cachedUsers: User[] = [];
+	getAllUsers(): User[] {
+		return this._cachedUsers;
 	}
-	getRoom(name: string): Room | undefined {
-		let roomFound: Room | undefined;
-		this._cachedRooms.forEach(room => {
-			if (room.name == name) {
-				roomFound = room;
-				// TODO: break out early?
+	getAllRooms(): string[] {
+		return this._cachedUsers.map(u => u.room).filter((v, i, a) => {
+			if (v == undefined) {
+				return false;
 			}
-		});
-		return roomFound;
+			return a.indexOf(v) === i;
+		}) as string[];
 	}
-	addUserToRoom(user: string, roomName: string) {
-		// Remove the user from existing rooms, in case the user moved
-		let i = this._cachedRooms.length;
-		while (i--) {
-			this._cachedRooms[i].removeUserAndSelf(user);
-		}
-		let done = false;
-		this._cachedRooms.forEach(room => {
-			if (room.name == roomName && !done) {
-				room.addUser(user);
-				done = true;
-				// TODO: break out early?
+	getUsersOfRoom(name: string): User[] {
+		return this._cachedUsers.filter(u => u.room == name);
+	}
+	private addOrGetUser(name: string, room?: string): User {
+		for (let i = 0; i < this._cachedUsers.length; i++) {
+			if (this._cachedUsers[i].name == name) {
+				if (room != undefined) {
+					this._cachedUsers[i].room = room;
+				}
+				return this._cachedUsers[i];
 			}
-		});
-		if (!done) {
-			const room = new Room(roomName, this._cachedRooms);
-			room.addUser(user);
-			this._cachedRooms.push(room);
 		}
+		let newUser = new User(name, room);
+		this._cachedUsers.push(newUser);
+		return newUser;
 	}
-	removeUserFromRoom(user: string, roomName: string) {
-		let room = this.getRoom(roomName);
-		if (room != undefined) {
-			room.removeUserAndSelf(user);
-		}
-	}
-	roomHasUser(user: string, roomName: string): boolean {
-		let room = this.getRoom(roomName);
-		if (room != undefined) {
-			return room.getUser(user) != undefined;
-		}
-		return false;
-	}
-	getUser(username: string): User | undefined {
-		this._cachedRooms.forEach(room => {
-			let user = room.getUser(username);
-			if (user != undefined) {
-				return user;
+	private removeUser(user: User | string) {
+		if (user instanceof User) {
+			let i = this._cachedUsers.indexOf(user);
+			if (i > -1) {
+				this._cachedUsers.splice(i, 1);
 			}
-		});
+		} else {
+			for (let i = 0; i < this._cachedUsers.length; i++) {
+				if (this._cachedUsers[i].name == user) {
+					this._cachedUsers.splice(i, 1);
+					break;
+				}
+			}
+		}
+	}
+	getUser(name: string): User | undefined {
+		for (let i = 0; i < this._cachedUsers.length; i++) {
+			if (this._cachedUsers[i].name == name) {
+				return this._cachedUsers[i];
+			}
+		}
 		return undefined;
 	}
 
@@ -92,7 +86,7 @@ export default class SyncplayJSONClient {
 	readonly joined = new EventTracker<(userName: string, roomName: string) => void>();
 	readonly left = new EventTracker<(userName: string, roomName: string) => void>();
 	readonly moved = new EventTracker<(userName: string, roomName: string) => void>();
-	readonly roomsUpdated = new EventTracker<(rooms: Room[]) => void>();
+	readonly usersUpdated = new EventTracker<(users: User[]) => void>();
 	readonly seek = new EventTracker<(position: number, setBy: string) => void>();
 	readonly pause = new EventTracker<(setBy: string) => void>();
 	readonly unpause = new EventTracker<(setBy: string) => void>();
@@ -231,64 +225,62 @@ export default class SyncplayJSONClient {
 				if (user.event) {
 					if (user.event.joined) {
 						this.joined.emit(key, user.room.name);
-						this.addUserToRoom(key, user.room.name);
+						this.addOrGetUser(key, user.room.name);
 					}
 					if (user.event.left) {
+						// TODO: change this to emit a user object
 						this.left.emit(key, user.room.name);
-						this.removeUserFromRoom(key, user.room.name);
+						this.removeUser(key);
 					}
 				} else {
-					if (!this.roomHasUser(key, user.room.name)) {
+					let cachedUser = this.addOrGetUser(key);
+					if (cachedUser.room != user.room.name) {
 						// user has moved
-						this.addUserToRoom(key, user.room.name);
+						cachedUser.room = user.room.name;
+						// TODO: change this to emit a user object
 						this.moved.emit(key, user.room.name);
 					}
 				}
 				if (user.file) {
-					let room = this.getRoom(user.room.name);
-					if (room != undefined) {
-						let cachedUser = room.getUser(key);
-						if (cachedUser != undefined) {
-							cachedUser.file = user.file;
-						}
+					let cachedUser = this.addOrGetUser(key);
+					if (cachedUser != undefined) {
+						cachedUser.file = user.file;
 					}
 				}
-				this.roomsUpdated.emit(this._cachedRooms);
+				this.usersUpdated.emit(this._cachedUsers);
 			});
 		}
 
-		// TODO:
-		// Here, we don't have the room name
-		// so make either:
-		// 1. Users reference room names, User list is stored
-		// -- Probably easiest to implement and smallest code size
-		// 2. Do nothing when a non-room user is given (coherent with UI/existing impls?)
-		// 3. Store both room and user lists
-		// actually nvm just do option 1 lol
 		if (msg.Set.ready) {
-			if (!this.roomdetails[]) {
-				this.addUserToRoom()
-				this.roomdetails[msg.Set.ready.username] = {};
-			}
-			this.roomdetails[msg.Set.ready.username].isReady = msg.Set.ready.isReady;
-			this.roomdetails[msg.Set.ready.username].manuallyInitiated = msg.Set.ready.manuallyInitiated;
+			let cachedUser = this.addOrGetUser(msg.Set.ready.username);
+			// TODO: wut does isReady = null mean?!
+			cachedUser.isReady = msg.Set.ready.isReady == null ? false : msg.Set.ready.isReady;
+			cachedUser.manuallyInitiated = msg.Set.ready.manuallyInitiated;
 
-			this.roomsUpdated.emit(this._cachedRooms);
+			this.usersUpdated.emit(this._cachedUsers);
 		}
 
 		// to implement:
 		// room, controllerAuth, newControlledRoom, playlistIndex, playlistChange
 	}
 
+	private isEmptyObject(obj: Object): obj is {} {
+		return Object.keys(obj).length == 0;
+	}
+
 	private parseList(msg: Required<Pick<SyncplayResponse, "List">>): void {
-		this._cachedRooms = [];
 		Object.keys(msg.List).forEach(room => {
 			Object.keys(msg.List[room]).forEach(user => {
-				this.roomdetails[user] = msg.List[room][user];
-				this.roomdetails[user].room = room;
+				let cachedUser = this.addOrGetUser(user, room);
+				let userMsg = msg.List[room][user];
+				cachedUser.file = this.isEmptyObject(userMsg.file) ? undefined : userMsg.file;
+				cachedUser.position = userMsg.position;
+				cachedUser.controller = userMsg.controller == undefined ? false : userMsg.controller;
+				cachedUser.isReady = userMsg.isReady;
+				// TODO: use userMsg.features?
 			});
 		});
-		this.roomsUpdated.emit(this._cachedRooms);
+		this.usersUpdated.emit(this._cachedUsers);
 	}
 
 	private parseState(msg: Required<Pick<SyncplayResponse, "State">>): void {
