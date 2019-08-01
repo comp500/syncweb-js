@@ -82,15 +82,16 @@ export default class SyncplayJSONClient {
 		return undefined;
 	}
 
+	// TODO: make connectedString more descriptive, provide more info, or store MOTD somewhere
 	readonly connected = new EventTracker<(connectedString: string) => void>();
-	readonly joined = new EventTracker<(userName: string, roomName: string) => void>();
-	readonly left = new EventTracker<(userName: string, roomName: string) => void>();
-	readonly moved = new EventTracker<(userName: string, roomName: string) => void>();
+	readonly joined = new EventTracker<(user: User) => void>();
+	readonly left = new EventTracker<(user: User) => void>();
+	readonly moved = new EventTracker<(user: User, oldRoom: string) => void>();
 	readonly usersUpdated = new EventTracker<(users: User[]) => void>();
-	readonly seek = new EventTracker<(position: number, setBy: string) => void>();
-	readonly pause = new EventTracker<(setBy: string) => void>();
-	readonly unpause = new EventTracker<(setBy: string) => void>();
-	readonly chat = new EventTracker<(userName: string, message: string) => void>();
+	readonly seek = new EventTracker<(position: number, setBy: User) => void>();
+	readonly pause = new EventTracker<(setBy: User) => void>();
+	readonly unpause = new EventTracker<(setBy: User) => void>();
+	readonly chat = new EventTracker<(user: User, message: string) => void>();
 
 	connect(options: { name: string; url: string; room: string; password: string }, callback: () => void): void {
 		this.transport = new WebSocketProtocol(options.url);
@@ -224,21 +225,21 @@ export default class SyncplayJSONClient {
 				let user = msg.Set.user![key];
 				if (user.event) {
 					if (user.event.joined) {
-						this.joined.emit(key, user.room.name);
-						this.addOrGetUser(key, user.room.name);
+						this.joined.emit(this.addOrGetUser(key, user.room.name));
 					}
 					if (user.event.left) {
-						// TODO: change this to emit a user object
-						this.left.emit(key, user.room.name);
-						this.removeUser(key);
+						let currUser = this.getUser(key);
+						if (currUser != undefined) {
+							this.removeUser(currUser);
+							this.left.emit(currUser);
+						}
 					}
 				} else {
 					let cachedUser = this.addOrGetUser(key);
-					if (cachedUser.room != user.room.name) {
-						// user has moved
+					if (cachedUser.room != undefined && cachedUser.room != user.room.name) {
+						let oldRoom = cachedUser.room;
 						cachedUser.room = user.room.name;
-						// TODO: change this to emit a user object
-						this.moved.emit(key, user.room.name);
+						this.moved.emit(cachedUser, oldRoom);
 					}
 				}
 				if (user.file) {
@@ -291,17 +292,19 @@ export default class SyncplayJSONClient {
 			this.stateChanged = false;
 		}
 		if (msg.State.playstate) {
+			// TODO: store currentUser instead of currentUsername???
 			if (msg.State.playstate.setBy && msg.State.playstate.setBy != this._currentUsername) {
+				let cachedUser = this.addOrGetUser(msg.State.playstate.setBy);
 				if (this.updateToServer || (msg.State.playstate.doSeek && !this.doSeek)) {
-					this.seek.emit(msg.State.playstate.position, msg.State.playstate.setBy);
+					this.seek.emit(msg.State.playstate.position, cachedUser);
 					this.updateToServer = false;
 				}
 				if (this.paused != msg.State.playstate.paused) {
 					if (msg.State.playstate.paused) {
-						this.pause.emit(msg.State.playstate.setBy);
+						this.pause.emit(cachedUser);
 						this.paused = true;
 					} else {
-						this.unpause.emit(msg.State.playstate.setBy);
+						this.unpause.emit(cachedUser);
 						this.paused = false;
 					}
 				}
@@ -329,7 +332,7 @@ export default class SyncplayJSONClient {
 	}
 
 	private parseChat(msg: Required<Pick<SyncplayResponse, "Chat">>): void {
-		this.chat.emit(msg.Chat.username, msg.Chat.message);
+		this.chat.emit(this.addOrGetUser(msg.Chat.username), msg.Chat.message);
 	}
 
 	private sendState(): void {
