@@ -31,16 +31,18 @@ export default class SyncplayJSONClient {
 	}
 
 	private _cachedUsers: User[] = [];
-	getAllUsers(): User[] {
+	getAllUsers(): ReadonlyArray<User> {
 		return this._cachedUsers;
 	}
 	getAllRooms(): string[] {
-		return this._cachedUsers.map(u => u.room).filter((v, i, a) => {
-			if (v == undefined) {
-				return false;
-			}
-			return a.indexOf(v) === i;
-		}) as string[];
+		return this._cachedUsers
+			.map(u => u.room)
+			.filter((v, i, a) => {
+				if (v == undefined) {
+					return false;
+				}
+				return a.indexOf(v) === i;
+			}) as string[];
 	}
 	getUsersOfRoom(name: string): User[] {
 		return this._cachedUsers.filter(u => u.room == name);
@@ -87,27 +89,29 @@ export default class SyncplayJSONClient {
 	readonly joined = new EventTracker<(user: User) => void>();
 	readonly left = new EventTracker<(user: User) => void>();
 	readonly moved = new EventTracker<(user: User, oldRoom: string) => void>();
-	readonly usersUpdated = new EventTracker<(users: User[]) => void>();
+	readonly usersUpdated = new EventTracker<(users: ReadonlyArray<User>) => void>();
 	readonly seek = new EventTracker<(position: number, setBy: User) => void>();
 	readonly pause = new EventTracker<(setBy: User) => void>();
 	readonly unpause = new EventTracker<(setBy: User) => void>();
 	readonly chat = new EventTracker<(user: User, message: string) => void>();
+	// TODO: error events, error handling and propagation
 
-	connect(options: { name: string; url: string; room: string; password: string }, callback: () => void): void {
-		this.transport = new WebSocketProtocol(options.url);
+	connect(name: string, room: string, url: string, password?: string): void;
+	connect(name: string, room: string, transport: JSONMessageProtocol, password?: string): void;
+	connect(name: string, room: string, urlOrTransport: string | JSONMessageProtocol, password?: string): void {
+		if (typeof urlOrTransport == "string") {
+			this.transport = new WebSocketProtocol(urlOrTransport);
+		} else {
+			this.transport = urlOrTransport;
+		}
 
 		this.transport.open.subscribe(() => {
-			if (options.password) {
-				this.sendHello(options.name, options.room, options.password);
-			} else {
-				this.sendHello(options.name, options.room);
-			}
+			this.sendHello(name, room, password);
 			this.sendReady();
 			this.sendListRequest();
-			if (this.currentFile) {
+			if (this.currentFile != undefined) {
 				this.sendFile();
 			}
-			callback();
 		});
 
 		this.transport.message.subscribe(msg => {
@@ -343,11 +347,13 @@ export default class SyncplayJSONClient {
 			wasDoSeek = true;
 			this.doSeek = false;
 		}
-		const playstate = clientIgnoreIsNotSet ? {
-			position: this.currentPosition,
-			paused: this.paused,
-			doSeek: wasDoSeek
-		} : undefined;
+		const playstate = clientIgnoreIsNotSet
+			? {
+					position: this.currentPosition,
+					paused: this.paused,
+					doSeek: wasDoSeek
+			  }
+			: undefined;
 
 		let ping = {
 			latencyCalculation: this.latencyCalculation,
