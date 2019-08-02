@@ -6,6 +6,7 @@ import SyncplayFile from "./messages/SyncplayFile";
 import SyncplayRequest from "./messages/SyncplayRequest";
 import SyncplayResponse from "./messages/SyncplayResponse";
 import User from "./User";
+import ServerFeatures from "./messages/ServerFeatures";
 
 export default class SyncplayJSONClient {
 	private transport?: JSONMessageProtocol;
@@ -20,13 +21,16 @@ export default class SyncplayJSONClient {
 	private serverPosition = 0;
 	private updateToServer = true;
 	private currentFile?: SyncplayFile;
-	private serverDetails?: any;
 	private stateChanged = false;
 	private latencyCalculation?: number;
-	private currentRoom = "";
+
+	private _currentRoom = "";
+	getRoom(): string {
+		return this._currentRoom;
+	}
 
 	private _currentUsername = "";
-	getCurrentUsername(): string {
+	getUsername(): string {
 		return this._currentUsername;
 	}
 
@@ -84,8 +88,7 @@ export default class SyncplayJSONClient {
 		return undefined;
 	}
 
-	// TODO: make connectedString more descriptive, provide more info, or store MOTD somewhere
-	readonly connected = new EventTracker<(connectedString: string) => void>();
+	readonly connected = new EventTracker<(motd: string, version: string, features: ServerFeatures) => void>();
 	readonly joined = new EventTracker<(user: User) => void>();
 	readonly left = new EventTracker<(user: User) => void>();
 	readonly moved = new EventTracker<(user: User, oldRoom: string) => void>();
@@ -200,25 +203,17 @@ export default class SyncplayJSONClient {
 
 	private parseError(msg: Required<Pick<SyncplayResponse, "Error">>): void {
 		console.log("err", msg.Error.message); // eslint-disable-line no-console
-		// TODO disconnect
+		// TODO disconnect, propagate
 	}
 
 	private parseHello(msg: Required<Pick<SyncplayResponse, "Hello">>): void {
 		console.log("hello", msg); // eslint-disable-line no-console
-		// TODO handle failed logins, etc.
-		this.serverDetails = {
-			version: msg.Hello.version,
-			realversion: msg.Hello.realversion,
-			features: msg.Hello.features,
-			motd: msg.Hello.motd
-		};
-		let connectedString = `Connected to server, version ${msg.Hello.realversion}.`;
-		if (msg.Hello.motd) {
-			connectedString += ` MOTD:
-			${msg.Hello.motd}`;
-		}
-		this.connected.emit(connectedString);
-		// roomEventRequest?
+		// TODO: handle failed logins, etc.
+
+		// Prefer realversion, because usually version is just the version the client passed (v good protocol)
+		let version = msg.Hello.realversion == null ? msg.Hello.version : msg.Hello.realversion;
+		this.connected.emit(msg.Hello.motd, version, msg.Hello.features);
+		// TODO: roomEventRequest?
 	}
 
 	private parseSet(msg: Required<Pick<SyncplayResponse, "Set">>): void {
@@ -381,7 +376,7 @@ export default class SyncplayJSONClient {
 
 	private sendHello(username: string, room: string, password?: string): void {
 		this._currentUsername = username;
-		this.currentRoom = room;
+		this._currentRoom = room;
 
 		this.sendData(SyncplayRequest.hello(username, room, password));
 	}

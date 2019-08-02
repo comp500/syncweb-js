@@ -1,5 +1,6 @@
 import ClientFeatures from "./ClientFeatures";
 import SyncplayFile from "./SyncplayFile";
+import ServerFeatures from "./ServerFeatures";
 
 export default class SyncplayResponse {
 	Hello?: {
@@ -10,16 +11,7 @@ export default class SyncplayResponse {
 		room: {
 			name: string
 		},
-		features: {
-			maxUsernameLength?: number,
-			chat?: boolean,
-			maxChatMessageLength?: number,
-			maxFilenameLength?: number,
-			isolateRooms?: boolean,
-			managedRooms?: boolean,
-			readiness?: boolean,
-			maxRoomNameLength?: number
-		}
+		features: ServerFeatures
 	}
 	Error?: {
 		message: string
