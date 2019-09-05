@@ -90,6 +90,7 @@ export default class SyncplayJSONClient {
 	}
 
 	readonly connected = new EventTracker<(motd: string, version: string, features: ServerFeatures) => void>();
+	readonly socketConnected = new EventTracker<() => void>();
 	readonly joined = new EventTracker<(user: User) => void>();
 	readonly left = new EventTracker<(user: User) => void>();
 	readonly moved = new EventTracker<(user: User, oldRoom: string) => void>();
@@ -110,6 +111,8 @@ export default class SyncplayJSONClient {
 		}
 
 		this.transport.open.subscribe(() => {
+			this.socketConnected.emit();
+
 			this.sendHello(name, room, password);
 			this.sendReady();
 			this.sendListRequest();
