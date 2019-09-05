@@ -42,6 +42,7 @@ export default class SyncplayJSONClient {
 		return this._cachedUsers
 			.map(u => u.room)
 			.filter((v, i, a) => {
+				// Remove duplicates, by checking if it's already in the array
 				if (v == undefined) {
 					return false;
 				}
